@@ -219,4 +219,4 @@ A Smith release is complete only when:
 6. install, upgrade, downgrade, reconnect, and uninstall paths are verified;
 7. immutable evidence identifies source commits, artefact hashes, test results, licences, and known deviations.
 
-Architecture is defined in [design.md](design.md), UX behavior and wireframes in [ux.md](ux.md), delivery sequencing in [delivery-plan.md](delivery-plan.md), verification in [test.md](test.md), and implementation work in [backlog.md](backlog.md).
+Architecture is defined in [design.md](design.md), UX behavior and wireframes in [ux.md](ux.md), delivery sequencing in [delivery-plan.md](delivery-plan.md), current MVP status in [mvp-status.md](mvp-status.md), verification in [test.md](test.md), and implementation work in [backlog.md](backlog.md).

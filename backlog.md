@@ -5,7 +5,7 @@ Date: 23 June 2026
 
 This backlog is the source for GitHub issues and the **Smith** GitHub Project. All new items start in `Todo`. Each issue must link its pull request and test evidence before moving to `Done`.
 
-UX behavior, UI/function mappings, and terminal wireframes are defined in [ux.md](ux.md). Delivery order, MVP grouping, priority policy, and project-management rules are defined in [delivery-plan.md](delivery-plan.md). UI implementation issues must reference the relevant UX section and wireframe before moving to `In Progress`.
+UX behavior, UI/function mappings, and terminal wireframes are defined in [ux.md](ux.md). Delivery order, MVP grouping, priority policy, and project-management rules are defined in [delivery-plan.md](delivery-plan.md). Current MVP verification status is recorded in [mvp-status.md](mvp-status.md). UI implementation issues must reference the relevant UX section and wireframe before moving to `In Progress`.
 
 ## Epic A — Code OSS baseline and product boundaries
 

@@ -9,10 +9,12 @@
     "smith": "node scripts/smith.mjs",
     "test:mvp0": "node scripts/mvp0-test.mjs",
     "test:mvp1": "node scripts/mvp1-test.mjs",
+    "test:mvp2": "node scripts/mvp2-test.mjs",
     "evidence:mvp0": "node scripts/mvp0-evidence.mjs",
     "verify:mvp0": "npm run build:mvp0 && npm run test:mvp0 && npm run evidence:mvp0",
     "verify:mvp1": "npm run build:mvp0 && npm run test:mvp1",
-    "verify:mvp": "npm run verify:mvp0 && npm run verify:mvp1"
+    "verify:mvp2": "npm run test:mvp2",
+    "verify:mvp": "npm run verify:mvp0 && npm run verify:mvp1 && npm run verify:mvp2"
   },
   "engines": {
     "node": ">=20"

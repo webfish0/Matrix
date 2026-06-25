@@ -1,6 +1,6 @@
 # Smith Implementation Backlog
 
-Status: Proposed  
+Status: Proposed
 Date: 23 June 2026
 
 This backlog is the source for GitHub issues and the **Smith** GitHub Project. All new items start in `Todo`. Each issue must link its pull request and test evidence before moving to `Done`.

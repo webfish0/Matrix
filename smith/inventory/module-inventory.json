@@ -1,0 +1,146 @@
+{
+  "schema": "smith.module-inventory.v1",
+  "upstreamCommit": "22f2d38a75f6e892dab57a5a153053c56a80d244",
+  "status": "mvp-0-initial",
+  "reviewRequiredBeforeImplementation": true,
+  "groups": [
+    {
+      "area": "remote-agent",
+      "classification": "reuse-with-product-adaptation",
+      "upstreamPaths": [
+        "src/vs/server/node/remoteExtensionHostAgentServer.ts",
+        "src/vs/server/node/serverServices.ts"
+      ],
+      "smithAdapter": "remote agent product metadata, packaging, startup wrapper, and version/provenance manifest",
+      "owner": "Smith core",
+      "tests": [
+        "T-001",
+        "T-002",
+        "T-003",
+        "T-028"
+      ],
+      "risks": [
+        "internal protocol is version-coupled",
+        "server service registrations may change across Code OSS commits"
+      ]
+    },
+    {
+      "area": "remote-client-transport",
+      "classification": "reuse-through-thin-adapter",
+      "upstreamPaths": [
+        "src/vs/platform/remote/common/remoteAgentConnection.ts",
+        "src/vs/platform/remote/common/remoteAuthorityResolver.ts"
+      ],
+      "smithAdapter": "SSH bootstrap and terminal-safe connection state presentation",
+      "owner": "Smith remote",
+      "tests": [
+        "T-002",
+        "T-003",
+        "T-019"
+      ],
+      "risks": [
+        "handshake and URI transform contracts are internal",
+        "connection recovery semantics must be proven under fault injection"
+      ]
+    },
+    {
+      "area": "extension-host",
+      "classification": "reuse-with-compatibility-registry",
+      "upstreamPaths": [
+        "src/vs/workbench/api/common/extHost.protocol.ts",
+        "src/vs/workbench/services/extensions/common/extensionHostProtocol.ts"
+      ],
+      "smithAdapter": "terminal contribution mapping and unsupported-surface classification",
+      "owner": "Smith extensions",
+      "tests": [
+        "T-014",
+        "T-015",
+        "T-023"
+      ],
+      "risks": [
+        "webviews and custom editors are not terminal-native",
+        "extension activation can execute workspace-controlled code and must respect trust"
+      ]
+    },
+    {
+      "area": "text-models",
+      "classification": "reuse-models-replace-renderer",
+      "upstreamPaths": [
+        "src/vs/editor/common/model",
+        "src/vs/editor/common/core"
+      ],
+      "smithAdapter": "terminal editor renderer with explicit byte, UTF-16, grapheme, and display-cell conversions",
+      "owner": "Smith editor",
+      "tests": [
+        "T-006",
+        "T-007",
+        "T-008"
+      ],
+      "risks": [
+        "Monaco DOM rendering is not reusable in a terminal",
+        "Unicode position mistakes can corrupt editing behavior"
+      ]
+    },
+    {
+      "area": "workbench-services",
+      "classification": "reuse-ui-independent-services",
+      "upstreamPaths": [
+        "src/vs/workbench/services/configuration",
+        "src/vs/workbench/services/keybinding",
+        "src/vs/workbench/services/commands",
+        "src/vs/workbench/services/contextkey"
+      ],
+      "smithAdapter": "terminal implementations of presentation services and composition roots",
+      "owner": "Smith workbench",
+      "tests": [
+        "T-010",
+        "T-013",
+        "T-016"
+      ],
+      "risks": [
+        "services may depend indirectly on browser or Electron implementations",
+        "context-key behavior must remain compatible with extension contributions"
+      ]
+    },
+    {
+      "area": "browser-electron-ui",
+      "classification": "replace",
+      "upstreamPaths": [
+        "src/vs/workbench/browser",
+        "src/vs/editor/browser",
+        "src/vs/platform/window"
+      ],
+      "smithAdapter": "terminal layout, renderer, input routing, overlays, status, and accessibility surfaces",
+      "owner": "Smith terminal UI",
+      "tests": [
+        "T-005",
+        "T-008",
+        "T-009",
+        "T-010",
+        "T-011"
+      ],
+      "risks": [
+        "pixel and DOM assumptions cannot leak into terminal components",
+        "mouse hit regions must be rebuilt on every frame and resize"
+      ]
+    },
+    {
+      "area": "html-only-surfaces",
+      "classification": "degrade-external-or-unsupported",
+      "upstreamPaths": [
+        "webviews",
+        "custom editors",
+        "rich notebook renderers"
+      ],
+      "smithAdapter": "compatibility registry with explicit native, textual fallback, external, unsupported, failed, and untested states",
+      "owner": "Smith extensions",
+      "tests": [
+        "T-015"
+      ],
+      "risks": [
+        "overstating compatibility would create a false IDE parity claim",
+        "external handoff must be explicit and user-controlled"
+      ]
+    }
+  ]
+}

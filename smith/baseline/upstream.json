@@ -1,0 +1,20 @@
+{
+  "schema": "smith.upstream-baseline.v1",
+  "product": "Smith",
+  "upstream": {
+    "name": "Code OSS",
+    "repository": "https://github.com/microsoft/vscode.git",
+    "branch": "main",
+    "commit": "22f2d38a75f6e892dab57a5a153053c56a80d244",
+    "licence": "MIT",
+    "pinnedAt": "2026-06-25",
+    "selectionReason": "Initial Smith MVP-0 baseline pinned from the public Code OSS main branch so downstream build, provenance, inventory, and evidence controls have a concrete source reference."
+  },
+  "updatePolicy": {
+    "cadence": "monthly routine candidate, urgent security candidate when required",
+    "routineBudget": "five engineer-days or less for a routine monthly Code OSS update",
+    "versionMatching": "Smith client and Smith remote agent artifacts must record the same upstream commit and Smith release version.",
+    "candidateBranchPattern": "upstream/code-oss-<yyyy-mm>",
+    "patchInventory": "smith/inventory/module-inventory.json"
+  }
+}

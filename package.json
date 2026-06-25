@@ -1,0 +1,16 @@
+{
+  "name": "@smith/matrix",
+  "private": true,
+  "version": "0.0.0-mvp.0",
+  "description": "Smith terminal-native Code OSS downstream planning and MVP foundation.",
+  "type": "module",
+  "scripts": {
+    "build:mvp0": "node scripts/mvp0-build.mjs",
+    "test:mvp0": "node scripts/mvp0-test.mjs",
+    "evidence:mvp0": "node scripts/mvp0-evidence.mjs",
+    "verify:mvp0": "npm run build:mvp0 && npm run test:mvp0 && npm run evidence:mvp0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

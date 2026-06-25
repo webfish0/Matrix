@@ -1,0 +1,20 @@
+{
+  "schema": "smith.product.v1",
+  "name": "Smith",
+  "applicationName": "smith",
+  "dataFolderName": ".smith",
+  "version": "0.0.0-mvp.0",
+  "quality": "mvp-foundation",
+  "commitSource": "git",
+  "branding": {
+    "usesMicrosoftVisualStudioCodeBranding": false,
+    "usesMicrosoftMarketplaceByDefault": false,
+    "usesMicrosoftPackagedVSCodeServer": false
+  },
+  "distribution": {
+    "remoteAgentSource": "Smith-built artifact from pinned MIT-licensed Code OSS source",
+    "serverLicenceDependency": "none",
+    "extensionRegistryDefault": "not yet selected; must pass legal review before release",
+    "telemetryDefault": "off until a documented Smith telemetry policy exists"
+  }
+}

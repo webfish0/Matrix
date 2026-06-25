@@ -32,7 +32,13 @@ Product MVP means a basic VS Code-like IDE accessible over a terminal through SS
 9. mouse click, wheel, resize, and keyboard-only operation work for the above;
 10. end-to-end evidence is generated against an SSH target.
 
-Foundation slices may be valuable, but they do not by themselves complete the Product MVP.
+Product MVP verification is represented by:
+
+```bash
+npm run verify:product-mvp
+```
+
+This test starts a disposable localhost OpenSSH server and validates the basic SSH terminal IDE flow without requiring language extensions.
 
 Requirements remain in [requirements.md](requirements.md), architecture in [design.md](design.md), UX in [ux.md](ux.md), tests in [test.md](test.md), and task details in [backlog.md](backlog.md).
 

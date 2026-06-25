@@ -5,6 +5,8 @@ Date: 23 June 2026
 
 This backlog is the source for GitHub issues and the **Smith** GitHub Project. All new items start in `Todo`. Each issue must link its pull request and test evidence before moving to `Done`.
 
+UX behavior, UI/function mappings, and terminal wireframes are defined in [ux.md](ux.md). Delivery order, MVP grouping, priority policy, and project-management rules are defined in [delivery-plan.md](delivery-plan.md). UI implementation issues must reference the relevant UX section and wireframe before moving to `In Progress`.
+
 ## Epic A — Code OSS baseline and product boundaries
 
 ### SMITH-001 Pin and build the Code OSS baseline
@@ -385,8 +387,8 @@ Recommended Smith Project fields:
 - **Risk:** High, Medium, Low.
 - **Upstream area:** Remote, Platform, Workbench, Editor, Extension Host, Product.
 
-Recommended initial priorities:
+Execution priorities and MVP milestones are defined in [delivery-plan.md](delivery-plan.md). The short version is:
 
-- P0: SMITH-001 through SMITH-014, SMITH-019, SMITH-023, SMITH-025.
-- P1: SMITH-015 through SMITH-018, SMITH-020 through SMITH-022, SMITH-024, SMITH-026.
-- P2: SMITH-027 after the vertical slice has stabilised, while CI foundations begin under SMITH-001.
+- P0: MVP-0 through MVP-3 tasks required to demonstrate a safe remote terminal editor.
+- P1: MVP-4 and Beta-1 tasks that add high-value IDE workflows.
+- P2: Beta-2 hardening, release, and recurring maintenance, with security/licence/data-loss issues allowed to override normal ordering.

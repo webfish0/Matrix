@@ -59,6 +59,8 @@ Tests must not read or modify the developer’s normal SSH, VS Code, terminal, G
 
 ## 5. Evidence
 
+Delivery slices and issue completion must follow the evidence gates in [delivery-plan.md](delivery-plan.md).
+
 Each run writes `test-evidence/<run-id>/manifest.json` containing:
 
 - Smith version, repository commit and Code OSS upstream commit;

@@ -420,3 +420,5 @@ Accepted. Smith does not promise wire compatibility across arbitrary Code OSS co
 - [Code OSS server service registration](https://github.com/microsoft/vscode/blob/main/src/vs/server/node/serverServices.ts)
 - [VS Code Server licence](https://code.visualstudio.com/license/server)
 - [VS Code Remote SSH documentation](https://code.visualstudio.com/docs/remote/ssh)
+- [Smith UX specification and wireframes](ux.md)
+- [Smith delivery plan](delivery-plan.md)

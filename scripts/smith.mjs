@@ -6,6 +6,7 @@ import { resolveSshTarget } from '../src/remote/ssh-config.mjs';
 import { SshWorkspaceClient } from '../src/remote/ssh-workspace.mjs';
 import { IdeSession } from '../src/ide/session.mjs';
 import { withSshFixture } from './ssh-fixture.mjs';
+import { parseOptions, requireOption } from '../src/cli/options.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -38,10 +39,29 @@ try {
       await session.initialize();
       await session.runInteractive();
     });
+  } else if (command === 'ide') {
+    const { options } = parseOptions(args);
+    const usage = 'npm run smith -- ide --host <host> --workspace <path> --identity <key> [--port 22] [--user user] [--known-hosts file] [--node node]';
+    const host = requireOption(options, 'host', usage);
+    const workspace = requireOption(options, 'workspace', usage);
+    const identityFile = requireOption(options, 'identity', usage);
+    const target = {
+      host,
+      port: Number(options.port ?? 22),
+      user: options.user ? String(options.user) : undefined,
+      identityFile,
+      knownHostsFile: options['known-hosts'] ? String(options['known-hosts']) : '/dev/null',
+      nodePath: options.node ? String(options.node) : 'node'
+    };
+    const client = new SshWorkspaceClient(target);
+    const session = new IdeSession({ client, workspace, remoteLabel: `ssh:${host}` });
+    await session.initialize();
+    await session.runInteractive();
   } else {
     console.error('Usage: npm run smith -- connect-plan <ssh-host> [workspace]');
     console.error('       npm run smith -- handshake-check');
     console.error('       npm run smith -- ide-demo');
+    console.error('       npm run smith -- ide --host <host> --workspace <path> --identity <key> [--port 22] [--user user]');
     process.exitCode = 2;
   }
 } catch (error) {

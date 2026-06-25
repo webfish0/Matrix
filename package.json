@@ -7,6 +7,7 @@
   "scripts": {
     "build:mvp0": "node scripts/mvp0-build.mjs",
     "smith": "node scripts/smith.mjs",
+    "screenshots:mvp": "node scripts/render-screenshots.mjs",
     "test:mvp0": "node scripts/mvp0-test.mjs",
     "test:mvp1": "node scripts/mvp1-test.mjs",
     "test:mvp2": "node scripts/mvp2-test.mjs",
@@ -21,7 +22,7 @@
     "verify:mvp3": "npm run test:mvp3",
     "verify:mvp4": "npm run test:mvp4",
     "verify:mvp": "npm run verify:mvp0 && npm run verify:mvp1 && npm run verify:mvp2 && npm run verify:mvp3 && npm run verify:mvp4",
-    "verify:product-mvp": "npm run verify:mvp && npm run test:product-mvp && npm run test:manual-mvp"
+    "verify:product-mvp": "npm run verify:mvp && npm run test:product-mvp && npm run test:manual-mvp && npm run screenshots:mvp"
   },
   "engines": {
     "node": ">=20"

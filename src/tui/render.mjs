@@ -26,16 +26,18 @@ export function renderWorkbench({ width, height, state = {} }) {
 
   if (regions.primarySideBar.width > 0) {
     drawBox(cells, regions.primarySideBar, 'Explorer');
-    writeText(cells, regions.primarySideBar.x + 1, regions.primarySideBar.y + 1, '▾ repo');
-    writeText(cells, regions.primarySideBar.x + 1, regions.primarySideBar.y + 2, '  ▾ src');
-    writeText(cells, regions.primarySideBar.x + 1, regions.primarySideBar.y + 3, '    app.ts ●');
+    const explorerLines = state.explorerLines ?? ['▾ repo', '  ▾ src', '    app.ts ●'];
+    explorerLines.slice(0, Math.max(0, regions.primarySideBar.height - 2)).forEach((line, index) => {
+      writeText(cells, regions.primarySideBar.x + 1, regions.primarySideBar.y + 1 + index, line);
+    });
     hitRegions.push(region('primarySideBar', regions.primarySideBar, 10, ['click', 'wheel', 'context']));
   }
 
   drawBox(cells, regions.editor, `Editor: ${state.activeFile ?? 'app.ts'}`);
-  writeText(cells, regions.editor.x + 1, regions.editor.y + 1, '1 function main() {');
-  writeText(cells, regions.editor.x + 1, regions.editor.y + 2, '2   return call();');
-  writeText(cells, regions.editor.x + 1, regions.editor.y + 3, '3 }');
+  const editorLines = state.editorLines ?? ['1 function main() {', '2   return call();', '3 }'];
+  editorLines.slice(0, Math.max(0, regions.editor.height - 2)).forEach((line, index) => {
+    writeText(cells, regions.editor.x + 1, regions.editor.y + 1 + index, line);
+  });
   hitRegions.push(region('editor', regions.editor, 10, ['click', 'drag', 'wheel', 'context']));
 
   if (regions.secondarySideBar.width > 0) {
@@ -46,7 +48,10 @@ export function renderWorkbench({ width, height, state = {} }) {
 
   if (regions.panel.height > 0) {
     drawBox(cells, regions.panel, 'Terminal');
-    writeText(cells, regions.panel.x + 1, regions.panel.y + 1, '$ npm test');
+    const terminalLines = state.terminalLines ?? ['$ npm test'];
+    terminalLines.slice(0, Math.max(0, regions.panel.height - 2)).forEach((line, index) => {
+      writeText(cells, regions.panel.x + 1, regions.panel.y + 1 + index, line);
+    });
     hitRegions.push(region('panel', regions.panel, 10, ['click', 'drag', 'wheel', 'context']));
   }
 

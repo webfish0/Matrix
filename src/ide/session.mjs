@@ -24,7 +24,7 @@ export class IdeSession {
   }
 
   async runInteractive() {
-    this.printWelcome();
+    await this.printWelcome();
     const rl = readline.createInterface({ input, output: this.output, terminal: true });
     try {
       while (true) {
@@ -40,7 +40,7 @@ export class IdeSession {
   }
 
   async runScript(lines) {
-    this.printWelcome();
+    await this.printWelcome();
     for (const line of lines) {
       this.write(`smith> ${line}\n`);
       const shouldContinue = await this.execute(line);
@@ -51,48 +51,53 @@ export class IdeSession {
   }
 
   async execute(line) {
-    const [command, ...args] = splitCommand(line);
-    if (!command) return true;
-    if (command === 'help') {
-      this.printHelp();
-    } else if (command === 'frame') {
-      this.printFrame();
-    } else if (command === 'ls') {
-      await this.printExplorer();
-    } else if (command === 'open') {
-      await this.open(requiredArg(args, 'open <file>'));
-      this.printEditor();
-    } else if (command === 'show') {
-      this.printEditor();
-    } else if (command === 'replace') {
-      this.replace(requiredArg(args, 'replace <old> <new>'), args.slice(1).join(' '));
-      this.printEditor();
-    } else if (command === 'set') {
-      this.buffer = args.join(' ');
-      this.dirty = true;
-      this.printEditor();
-    } else if (command === 'save') {
-      await this.save();
-    } else if (command === 'search') {
-      await this.search(requiredArg(args, 'search <query>'));
-    } else if (command === 'run') {
-      await this.runTerminal(requiredArg(args, 'run <command> [args...]'), args.slice(1));
-    } else if (command === 'status') {
-      this.printStatus();
-    } else if (command === 'quit' || command === 'exit') {
-      if (this.dirty) {
-        this.write('Unsaved changes exist. Run `save` first or `quit!` to discard.\n');
-        return true;
+    try {
+      const [command, ...args] = splitCommand(line);
+      if (!command) return true;
+      if (command === 'help') {
+        this.printHelp();
+      } else if (command === 'frame') {
+        await this.printFrame();
+      } else if (command === 'ls') {
+        await this.printExplorer(args[0] ?? '.');
+      } else if (command === 'open') {
+        await this.open(requiredArg(args, 'open <file>'));
+        this.printEditor();
+      } else if (command === 'show') {
+        this.printEditor();
+      } else if (command === 'replace') {
+        this.replace(requiredArg(args, 'replace <old> <new>'), args.slice(1).join(' '));
+        this.printEditor();
+      } else if (command === 'set') {
+        this.buffer = args.join(' ');
+        this.dirty = true;
+        this.printEditor();
+      } else if (command === 'save') {
+        await this.save();
+      } else if (command === 'search') {
+        await this.search(requiredArg(args, 'search <query>'));
+      } else if (command === 'run') {
+        await this.runTerminal(requiredArg(args, 'run <command> [args...]'), args.slice(1));
+      } else if (command === 'status') {
+        this.printStatus();
+      } else if (command === 'quit' || command === 'exit') {
+        if (this.dirty) {
+          this.write('Unsaved changes exist. Run `save` first or `quit!` to discard.\n');
+          return true;
+        }
+        this.write('Goodbye.\n');
+        return false;
+      } else if (command === 'quit!') {
+        this.write('Discarded unsaved changes. Goodbye.\n');
+        return false;
+      } else {
+        this.write(`Unknown command: ${command}. Run help.\n`);
       }
-      this.write('Goodbye.\n');
-      return false;
-    } else if (command === 'quit!') {
-      this.write('Discarded unsaved changes. Goodbye.\n');
-      return false;
-    } else {
-      this.write(`Unknown command: ${command}. Run help.\n`);
+      return true;
+    } catch (error) {
+      this.write(`${friendlyError(error)}\n`);
+      return true;
     }
-    return true;
   }
 
   async open(relativePath) {
@@ -132,9 +137,10 @@ export class IdeSession {
     if (this.lastTerminal.stderr) this.write(this.lastTerminal.stderr);
   }
 
-  async printExplorer() {
-    const entries = await this.client.list(this.workspace);
-    this.write('Explorer\n');
+  async printExplorer(relativePath = '.') {
+    const target = relativePath === '.' ? this.workspace : workspaceFile(this.workspace, relativePath);
+    const entries = await this.client.list(target);
+    this.write(`Explorer: ${relativePath}\n`);
     for (const entry of entries) {
       this.write(`${entry.kind === 'directory' ? '▾' : ' '} ${entry.name}\n`);
     }
@@ -148,7 +154,19 @@ export class IdeSession {
     });
   }
 
-  printFrame() {
+  async printFrame() {
+    const explorerEntries = ['▾ repo'];
+    try {
+      const entries = await this.client.list(this.workspace);
+      for (const entry of entries) {
+        explorerEntries.push(`${entry.kind === 'directory' ? '  ▾' : '   '} ${entry.name}`);
+      }
+    } catch {
+      explorerEntries.push('  <unavailable>');
+    }
+    const editorLines = this.buffer
+      ? this.buffer.split(/\r?\n/u).slice(0, 20).map((line, index) => `${index + 1} ${line}`)
+      : ['<no file open>'];
     const frame = renderWorkbench({
       width: 100,
       height: 30,
@@ -157,7 +175,12 @@ export class IdeSession {
         remote: this.remoteLabel,
         connection: 'ready',
         activeFile: this.activeFile ?? 'none',
-        unsaved: this.dirty ? 1 : 0
+        unsaved: this.dirty ? 1 : 0,
+        explorerLines: explorerEntries,
+        editorLines,
+        terminalLines: this.lastTerminal
+          ? [`$ ${this.lastTerminal.command ?? 'command'}`, this.lastTerminal.stdout?.trim() ?? '']
+          : ['$ <no command run>']
       }
     });
     this.write(`${frame.text}\n`);
@@ -167,11 +190,11 @@ export class IdeSession {
     this.write(`remote=${this.remoteLabel} workspace=${this.workspace} active=${this.activeFile ?? 'none'} dirty=${this.dirty}\n`);
   }
 
-  printWelcome() {
+  async printWelcome() {
     this.write('Smith Product MVP interactive IDE\n');
     this.write('Connected over SSH. Language extensions are deferred after MVP.\n');
     this.printHelp();
-    this.printFrame();
+    await this.printFrame();
   }
 
   printHelp() {
@@ -197,4 +220,19 @@ function requiredArg(args, usage) {
     throw new Error(`Usage: ${usage}`);
   }
   return args[0];
+}
+
+function friendlyError(error) {
+  const message = error?.message ?? String(error);
+  if (message.includes('ENOENT')) {
+    return 'File or directory not found.';
+  }
+  if (message.includes('ENOTDIR')) {
+    return 'Path is not a directory.';
+  }
+  if (message.includes('Command failed: ssh')) {
+    const nodeError = message.split('\n').find((line) => line.includes('Error: '));
+    return nodeError ? nodeError.replace(/^.*Error: /u, 'Error: ') : 'Remote command failed.';
+  }
+  return `Error: ${message}`;
 }

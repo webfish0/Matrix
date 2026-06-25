@@ -46,6 +46,12 @@ npm run smith -- ide-demo
 
 The command starts a disposable localhost OpenSSH server and provides a terminal IDE prompt for the basic SSH workspace flow without requiring language extensions.
 
+To connect to a supplied SSH target, run:
+
+```bash
+npm run smith -- ide --host <host> --workspace <remote-path> --identity <private-key> --user <user> --port <port>
+```
+
 Requirements remain in [requirements.md](requirements.md), architecture in [design.md](design.md), UX in [ux.md](ux.md), tests in [test.md](test.md), and task details in [backlog.md](backlog.md).
 
 ## 2. Delivery rules

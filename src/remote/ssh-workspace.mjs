@@ -91,7 +91,7 @@ export class SshWorkspaceClient {
       command,
       ...args
     ]);
-    return JSON.parse(output);
+    return { command: [command, ...args].join(' '), ...JSON.parse(output) };
   }
 }
 

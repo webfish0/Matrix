@@ -26,6 +26,12 @@ npm run smith -- ide-demo
 
 This starts a disposable localhost OpenSSH server, connects Smith to it over SSH, opens a temporary remote workspace, and gives you an interactive terminal IDE prompt.
 
+To connect to a supplied SSH target:
+
+```bash
+npm run smith -- ide --host <host> --workspace <remote-path> --identity <private-key> --user <user> --port <port>
+```
+
 Available commands:
 
 ```text
@@ -65,6 +71,8 @@ test-evidence/product-mvp/results.json
 test-evidence/product-mvp/junit/product-mvp.xml
 test-evidence/product-mvp/frames/workbench-100x30.txt
 test-evidence/manual-product-mvp/transcript.txt
+test-evidence/manual-product-mvp/screenshots/manual-session.png
+test-evidence/product-mvp/screenshots/workbench-100x30.png
 ```
 
 ## Confirmed foundation scope

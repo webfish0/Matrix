@@ -37,6 +37,8 @@ await test('MANUAL-MVP-001', 'interactive IDE commands browse edit save search r
     await session.initialize();
     await session.runScript([
       'ls',
+      'ls src',
+      'open missing.txt',
       'open src/app.ts',
       'replace hello manual-mvp',
       'save',
@@ -50,6 +52,9 @@ await test('MANUAL-MVP-001', 'interactive IDE commands browse edit save search r
     const transcript = output.text;
     assert(transcript.includes('Smith Product MVP interactive IDE'), 'transcript must show interactive IDE banner');
     assert(transcript.includes('Explorer'), 'transcript must show explorer');
+    assert(transcript.includes('Explorer: src'), 'transcript must browse inside src');
+    assert(transcript.includes('app.ts'), 'transcript must list app.ts inside src');
+    assert(transcript.includes('File or directory not found.') || transcript.includes('Error: ENOENT'), 'missing file must produce recoverable error');
     assert(transcript.includes('Saved src/app.ts'), 'transcript must show save');
     assert(transcript.includes('src/app.ts:1'), 'transcript must show search result');
     assert(transcript.includes('ide-ok'), 'transcript must show remote terminal command output');

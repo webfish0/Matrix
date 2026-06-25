@@ -38,7 +38,13 @@ Product MVP verification is represented by:
 npm run verify:product-mvp
 ```
 
-This test starts a disposable localhost OpenSSH server and validates the basic SSH terminal IDE flow without requiring language extensions.
+Manual Product MVP use is represented by:
+
+```bash
+npm run smith -- ide-demo
+```
+
+The command starts a disposable localhost OpenSSH server and provides a terminal IDE prompt for the basic SSH workspace flow without requiring language extensions.
 
 Requirements remain in [requirements.md](requirements.md), architecture in [design.md](design.md), UX in [ux.md](ux.md), tests in [test.md](test.md), and task details in [backlog.md](backlog.md).
 

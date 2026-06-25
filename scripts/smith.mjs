@@ -3,6 +3,9 @@ import { readJson, stableJson } from './lib.mjs';
 import { buildAgentInstallPlan } from '../src/remote/agent-plan.mjs';
 import { evaluateHandshake } from '../src/remote/handshake.mjs';
 import { resolveSshTarget } from '../src/remote/ssh-config.mjs';
+import { SshWorkspaceClient } from '../src/remote/ssh-workspace.mjs';
+import { IdeSession } from '../src/ide/session.mjs';
+import { withSshFixture } from './ssh-fixture.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -28,9 +31,17 @@ try {
       protocolVersion: 'mvp-1'
     };
     console.log(stableJson(evaluateHandshake({ client: expected, agent: expected })));
+  } else if (command === 'ide-demo') {
+    await withSshFixture(async ({ target, workspace }) => {
+      const client = new SshWorkspaceClient(target);
+      const session = new IdeSession({ client, workspace, remoteLabel: 'ssh:fixture' });
+      await session.initialize();
+      await session.runInteractive();
+    });
   } else {
     console.error('Usage: npm run smith -- connect-plan <ssh-host> [workspace]');
     console.error('       npm run smith -- handshake-check');
+    console.error('       npm run smith -- ide-demo');
     process.exitCode = 2;
   }
 } catch (error) {

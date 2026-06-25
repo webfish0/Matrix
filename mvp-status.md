@@ -1,6 +1,6 @@
 # Smith Product MVP Status
 
-Status: Product MVP smoke path implemented and verified
+Status: Manually usable Product MVP implemented and verified
 Date: 25 June 2026
 Verified commit: the repository commit containing this status update
 
@@ -16,6 +16,32 @@ npm run verify:product-mvp
 
 Result: passed locally against a disposable localhost OpenSSH server.
 
+## Manual command
+
+Run:
+
+```bash
+npm run smith -- ide-demo
+```
+
+This starts a disposable localhost OpenSSH server, connects Smith to it over SSH, opens a temporary remote workspace, and gives you an interactive terminal IDE prompt.
+
+Available commands:
+
+```text
+frame
+ls
+open <file>
+show
+replace <old> <new>
+set <text>
+save
+search <query>
+run <cmd> [args]
+status
+quit
+```
+
 ## Confirmed Product MVP scope
 
 The Product MVP smoke path confirms:
@@ -29,6 +55,7 @@ The Product MVP smoke path confirms:
 | Search remote workspace | Remote text search finds the edited content. |
 | Run remote terminal command | Remote `/bin/echo terminal-ok` executes over SSH. |
 | Render terminal workbench | Workbench frame with Explorer/editor/panel/status is captured under `test-evidence/product-mvp/frames/`. |
+| Manual terminal IDE use | `npm run smith -- ide-demo` lets a user browse, open, edit, save, search, run a command, and quit. |
 
 Product MVP evidence:
 
@@ -37,6 +64,7 @@ test-evidence/product-mvp/manifest.json
 test-evidence/product-mvp/results.json
 test-evidence/product-mvp/junit/product-mvp.xml
 test-evidence/product-mvp/frames/workbench-100x30.txt
+test-evidence/manual-product-mvp/transcript.txt
 ```
 
 ## Confirmed foundation scope

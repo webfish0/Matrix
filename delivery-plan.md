@@ -17,6 +17,23 @@ The delivery order is deliberately vertical:
 6. add daily development workflows;
 7. harden for beta and release.
 
+## Product MVP definition
+
+Product MVP means a basic VS Code-like IDE accessible over a terminal through SSH. It is complete only when:
+
+1. `smith <ssh-host> <workspace>` opens a remote workspace over SSH;
+2. Smith enters and restores terminal mode safely;
+3. the terminal workbench shows navigation, Explorer, editor, panel, and status bar;
+4. Explorer browses the remote workspace;
+5. the editor opens, edits, undo/redos, saves, and detects conflicts for remote text files;
+6. Search finds text in the remote workspace;
+7. the integrated terminal runs a remote shell command;
+8. the command palette exposes core commands;
+9. mouse click, wheel, resize, and keyboard-only operation work for the above;
+10. end-to-end evidence is generated against an SSH target.
+
+Foundation slices may be valuable, but they do not by themselves complete the Product MVP.
+
 Requirements remain in [requirements.md](requirements.md), architecture in [design.md](design.md), UX in [ux.md](ux.md), tests in [test.md](test.md), and task details in [backlog.md](backlog.md).
 
 ## 2. Delivery rules

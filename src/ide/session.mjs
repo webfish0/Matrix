@@ -16,11 +16,18 @@ export class IdeSession {
     this.lastTerminal = null;
   }
 
-  async initialize() {
+  async initialize({ seedDemo = false } = {}) {
     await this.client.ensureWorkspace(this.workspace);
-    await this.client.writeFile(workspaceFile(this.workspace, 'src/app.ts'), 'export const message = "hello";\n');
-    await this.client.writeFile(workspaceFile(this.workspace, 'README.md'), '# Smith MVP workspace\n');
-    await this.open('src/app.ts');
+    if (seedDemo) {
+      await this.client.writeFile(workspaceFile(this.workspace, 'src/app.ts'), 'export const message = "hello";\n');
+      await this.client.writeFile(workspaceFile(this.workspace, 'README.md'), '# Smith MVP workspace\n');
+      await this.open('src/app.ts');
+      return;
+    }
+    const firstFile = await this.findFirstFile();
+    if (firstFile) {
+      await this.open(firstFile);
+    }
   }
 
   async runInteractive() {
@@ -137,6 +144,21 @@ export class IdeSession {
     if (this.lastTerminal.stderr) this.write(this.lastTerminal.stderr);
   }
 
+  async findFirstFile(relativePath = '.') {
+    const entries = await this.client.list(relativePath === '.' ? this.workspace : workspaceFile(this.workspace, relativePath));
+    for (const entry of entries) {
+      const entryPath = relativePath === '.' ? entry.name : `${relativePath}/${entry.name}`;
+      if (entry.kind === 'file') {
+        return entryPath;
+      }
+      const nested = await this.findFirstFile(entryPath);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
   async printExplorer(relativePath = '.') {
     const target = relativePath === '.' ? this.workspace : workspaceFile(this.workspace, relativePath);
     const entries = await this.client.list(target);
@@ -193,6 +215,9 @@ export class IdeSession {
   async printWelcome() {
     this.write('Smith Product MVP interactive IDE\n');
     this.write('Connected over SSH. Language extensions are deferred after MVP.\n');
+    if (!this.activeFile) {
+      this.write('No file is open. Use `ls` and `open <file>`.\n');
+    }
     this.printHelp();
     await this.printFrame();
   }

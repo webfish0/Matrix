@@ -36,7 +36,7 @@ try {
     await withSshFixture(async ({ target, workspace }) => {
       const client = new SshWorkspaceClient(target);
       const session = new IdeSession({ client, workspace, remoteLabel: 'ssh:fixture' });
-      await session.initialize();
+      await session.initialize({ seedDemo: true });
       await session.runInteractive();
     });
   } else if (command === 'ide') {
@@ -55,7 +55,7 @@ try {
     };
     const client = new SshWorkspaceClient(target);
     const session = new IdeSession({ client, workspace, remoteLabel: `ssh:${host}` });
-    await session.initialize();
+    await session.initialize({ seedDemo: false });
     await session.runInteractive();
   } else {
     console.error('Usage: npm run smith -- connect-plan <ssh-host> [workspace]');

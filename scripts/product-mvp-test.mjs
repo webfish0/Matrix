@@ -1,11 +1,21 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { IdeSession } from '../src/ide/session.mjs';
 import { renderWorkbench } from '../src/tui/render.mjs';
 import { SshWorkspaceClient, workspaceFile } from '../src/remote/ssh-workspace.mjs';
 import { withSshFixture } from './ssh-fixture.mjs';
 import { writeJson } from './lib.mjs';
 
 const results = [];
+
+class CaptureStream {
+  constructor() {
+    this.text = '';
+  }
+
+  write(chunk) {
+    this.text += chunk.toString();
+  }
+}
 
 async function test(id, name, fn) {
   const startedAt = Date.now();
@@ -60,6 +70,19 @@ await test('PMVP-001', 'opens SSH workspace and performs terminal IDE baseline f
   });
 });
 
+await test('PMVP-002', 'supplied-target initialization does not overwrite workspace files', async () => {
+  await withSshFixture(async ({ target, workspace }) => {
+    const output = new CaptureStream();
+    const client = new SshWorkspaceClient(target);
+    await client.ensureWorkspace(workspace);
+    await client.writeFile(workspaceFile(workspace, 'README.md'), 'do not overwrite\n');
+    const session = new IdeSession({ client, workspace, remoteLabel: 'ssh:supplied', outputWriter: output });
+    await session.initialize({ seedDemo: false });
+    const readme = await client.readFile(workspaceFile(workspace, 'README.md'));
+    assert(readme === 'do not overwrite\n', 'supplied-target initialization must not overwrite user files');
+  });
+});
+
 const failed = results.filter((result) => result.status !== 'passed');
 await mkdir('test-evidence/product-mvp/junit', { recursive: true });
 await writeJson('test-evidence/product-mvp/results.json', {
@@ -108,6 +131,7 @@ function assert(condition, message) {
     throw new Error(message);
   }
 }
+
 
 function escapeXml(value) {
   return String(value)

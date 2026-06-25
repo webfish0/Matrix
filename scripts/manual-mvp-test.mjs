@@ -34,7 +34,7 @@ await test('MANUAL-MVP-001', 'interactive IDE commands browse edit save search r
     const output = new CaptureStream();
     const client = new SshWorkspaceClient(target);
     const session = new IdeSession({ client, workspace, remoteLabel: 'ssh:fixture', outputWriter: output });
-    await session.initialize();
+    await session.initialize({ seedDemo: true });
     await session.runScript([
       'ls',
       'ls src',

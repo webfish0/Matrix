@@ -2,7 +2,7 @@
 
 Status: Product MVP smoke path implemented and verified
 Date: 25 June 2026
-Verified commit: `b0c90dc`
+Verified commit: the repository commit containing this status update
 
 ## Product MVP boundary
 

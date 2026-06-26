@@ -36,8 +36,10 @@ export class IdeSession {
     this.minibuffer = { kind: 'message', prompt: '', input: '', message: '' };
     this.overlay = null;
     this.pendingQuit = false;
+    this.pendingDelete = null;
     this.quitRequested = false;
     this.renderedFrames = [];
+    this.suppressKeypressUntil = 0;
   }
 
   async initialize({ seedDemo = false } = {}) {
@@ -73,14 +75,16 @@ export class IdeSession {
     await new Promise((resolve) => {
       const onResize = () => this.renderToTerminal();
       const onData = async (chunk) => {
-        const mouse = parseSgrMouse(chunk.toString('utf8'));
-        if (mouse) {
-          await this.handleMouse(mouse);
+        const handled = await this.handleRawInput(chunk.toString('utf8'));
+        if (handled) {
           this.renderToTerminal();
         }
       };
       const onKeypress = async (str, key) => {
         try {
+          if (this.shouldSuppressKeypress(str, key)) {
+            return;
+          }
           await this.handleKey(key, str);
           this.renderToTerminal();
           if (this.quitRequested) {
@@ -129,6 +133,10 @@ export class IdeSession {
     }
     if (action.type === 'mouse') {
       await this.handleMouse(action);
+      return;
+    }
+    if (action.type === 'rawInput') {
+      await this.handleRawInput(action.sequence);
       return;
     }
     if (action.type === 'resize') {
@@ -287,8 +295,20 @@ export class IdeSession {
       return;
     }
     if (name === 'r') {
+      await this.promptRenameSelected();
+      return;
+    }
+    if (name === 'R') {
       await this.refreshExplorer();
       this.setMessage('Explorer refreshed.');
+      return;
+    }
+    if (name === 'a') {
+      this.promptCreateFile();
+      return;
+    }
+    if (name === 'd') {
+      await this.requestDeleteSelected();
       return;
     }
     if (name === 'i') {
@@ -329,6 +349,10 @@ export class IdeSession {
   }
 
   async handleText(text) {
+    if (!isSafeTextInput(text)) {
+      this.setMessage('Ignored terminal control input.');
+      return;
+    }
     if (this.mode === 'terminal') {
       this.terminalInput += text;
       return;
@@ -355,14 +379,25 @@ export class IdeSession {
       return;
     }
     if (name === 'enter') {
+      const submittedKind = this.minibuffer.kind;
       if (this.mode === 'search') {
         await this.search(this.minibuffer.input);
+        this.mode = 'normal';
       } else if (this.minibuffer.kind === 'quickOpen') {
         await this.quickOpen(this.minibuffer.input);
+        this.mode = 'normal';
+      } else if (this.minibuffer.kind === 'createFile') {
+        await this.createFile(this.minibuffer.input);
+        this.mode = 'normal';
+      } else if (this.minibuffer.kind === 'rename') {
+        await this.renameActive(this.minibuffer.input);
+        this.mode = 'normal';
       } else {
         await this.runPaletteCommand(this.minibuffer.input);
+        if (submittedKind === this.minibuffer.kind && this.minibuffer.kind === 'command') {
+          this.mode = 'normal';
+        }
       }
-      this.mode = 'normal';
     }
   }
 
@@ -384,6 +419,10 @@ export class IdeSession {
   }
 
   async handleOverlayKey(name) {
+    if (this.pendingDelete) {
+      const handled = await this.handleDeleteConfirmation(name);
+      if (handled) return;
+    }
     if (name === 'escape' || name === '?' || name === 'enter') {
       this.overlay = null;
       this.setMessage('Help closed.');
@@ -414,6 +453,24 @@ export class IdeSession {
     }
   }
 
+  async handleRawInput(sequence) {
+    const mouse = parseSgrMouse(sequence);
+    if (!mouse) {
+      return false;
+    }
+    this.suppressKeypressUntil = Date.now() + 100;
+    await this.handleMouse(mouse);
+    return true;
+  }
+
+  shouldSuppressKeypress(str, key) {
+    if (Date.now() > this.suppressKeypressUntil) {
+      return false;
+    }
+    const sequence = key?.sequence ?? str ?? '';
+    return sequence === '' || isControlSequence(sequence) || isMouseSequenceFragment(sequence) || sequence.length === 1;
+  }
+
   async activateExplorerSelection() {
     const row = this.selectedExplorerRow();
     if (!row) return;
@@ -439,13 +496,39 @@ export class IdeSession {
     this.setMessage(`Opened ${relativePath}`);
   }
 
+  async createFile(relativePath) {
+    const safePath = normalizeUserPath(relativePath);
+    await this.client.writeFile(workspaceFile(this.workspace, safePath), '');
+    await this.expandParent(safePath);
+    await this.refreshExplorer();
+    await this.open(safePath, { focusEditor: true });
+    this.setMessage(`Created ${safePath}`);
+  }
+
+  async renameActive(newRelativePath) {
+    const currentPath = this.activeFile ?? this.selectedExplorerRow()?.relativePath;
+    if (!currentPath) throw new Error('No file selected to rename.');
+    const safePath = normalizeUserPath(newRelativePath);
+    await this.client.renamePath(workspaceFile(this.workspace, currentPath), workspaceFile(this.workspace, safePath));
+    await this.expandParent(safePath);
+    await this.refreshExplorer();
+    if (this.activeFile === currentPath) {
+      this.activeFile = safePath;
+      await this.open(safePath, { focusEditor: true });
+    }
+    this.setMessage(`Renamed ${currentPath} to ${safePath}`);
+  }
+
   async quickOpen(query) {
-    const match = this.explorerRows.find((row) => row.kind === 'file' && row.relativePath.includes(query));
+    const files = await this.collectFiles('.');
+    const match = files.find((file) => file.includes(query));
     if (!match) {
       this.setMessage(`No file found for ${query}.`);
       return;
     }
-    await this.open(match.relativePath, { focusEditor: true });
+    await this.expandParent(match);
+    await this.refreshExplorer();
+    await this.open(match, { focusEditor: true });
   }
 
   insertText(text) {
@@ -529,7 +612,13 @@ export class IdeSession {
 
   async runPaletteCommand(commandText) {
     const command = commandText.trim().toLowerCase();
-    if (command.includes('save')) {
+    if (command.includes('new') || command.includes('create')) {
+      this.promptCreateFile();
+    } else if (command.includes('rename')) {
+      await this.promptRenameSelected();
+    } else if (command.includes('delete')) {
+      await this.requestDeleteSelected();
+    } else if (command.includes('save')) {
       await this.save();
     } else if (command.includes('search')) {
       this.openSearch();
@@ -562,6 +651,66 @@ export class IdeSession {
     }
     this.quitRequested = true;
     this.setMessage('Goodbye.');
+  }
+
+  promptCreateFile() {
+    this.mode = 'command';
+    this.focus = 'minibuffer';
+    this.minibuffer = { kind: 'createFile', prompt: 'New file:', input: '', message: 'Enter a workspace-relative file path.' };
+  }
+
+  async promptRenameSelected() {
+    const currentPath = this.activeFile ?? this.selectedExplorerRow()?.relativePath;
+    if (!currentPath) {
+      this.setMessage('No file selected to rename.');
+      return;
+    }
+    this.mode = 'command';
+    this.focus = 'minibuffer';
+    this.minibuffer = { kind: 'rename', prompt: `Rename ${currentPath} to:`, input: '', message: 'Enter the workspace-relative destination path.' };
+  }
+
+  async requestDeleteSelected() {
+    const target = this.activeFile ?? this.selectedExplorerRow()?.relativePath;
+    if (!target) {
+      this.setMessage('No file selected to delete.');
+      return;
+    }
+    this.pendingDelete = target;
+    this.overlay = {
+      kind: 'confirm-delete',
+      title: 'Delete file',
+      lines: [
+        `Delete ${target}?`,
+        'Press d to delete permanently, Esc to cancel.'
+      ]
+    };
+  }
+
+  async handleDeleteConfirmation(name) {
+    if (!this.pendingDelete) return false;
+    if (name === 'escape') {
+      this.pendingDelete = null;
+      this.overlay = null;
+      this.setMessage('Delete cancelled.');
+      return true;
+    }
+    if (name === 'd') {
+      const deleted = this.pendingDelete;
+      await this.client.deletePath(workspaceFile(this.workspace, deleted));
+      if (this.activeFile === deleted) {
+        this.activeFile = null;
+        this.bufferLines = [];
+        this.cursor = { line: 0, column: 0 };
+        this.dirty = false;
+      }
+      this.pendingDelete = null;
+      this.overlay = null;
+      await this.refreshExplorer();
+      this.setMessage(`Deleted ${deleted}`);
+      return true;
+    }
+    return true;
   }
 
   async handleQuitConfirmation(name) {
@@ -606,6 +755,30 @@ export class IdeSession {
       if (entry.kind === 'directory' && this.expanded.has(childPath)) {
         await this.addExplorerRows(childPath, depth + 1);
       }
+    }
+  }
+
+  async collectFiles(relativePath) {
+    const absolute = relativePath === '.' ? this.workspace : workspaceFile(this.workspace, relativePath);
+    const entries = await this.client.list(absolute);
+    const files = [];
+    for (const entry of entries) {
+      const childPath = relativePath === '.' ? entry.name : posix.join(relativePath, entry.name);
+      if (entry.kind === 'directory') {
+        files.push(...await this.collectFiles(childPath));
+      } else {
+        files.push(childPath);
+      }
+    }
+    return files;
+  }
+
+  async expandParent(relativePath) {
+    const parts = relativePath.split('/').slice(0, -1);
+    let current = '';
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      this.expanded.add(current);
     }
   }
 
@@ -743,10 +916,18 @@ function helpLines(focus) {
     'Global: Ctrl+Shift+P commands, Ctrl+P quick open, Ctrl+S save, Ctrl+` terminal, ? help, q quit.',
     'Modes: NORMAL navigates, INSERT edits, SEARCH finds text, TERMINAL runs remote commands.'
   ];
-  if (focus === 'explorer') return ['Explorer: ↑/↓ or j/k move, Enter opens/toggles, r refresh, Tab changes focus.', ...global];
+  if (focus === 'explorer') return ['Explorer: ↑/↓ or j/k move, Enter opens/toggles, a new file, r rename, d delete, R refresh.', ...global];
   if (focus === 'editor') return ['Editor: i insert, Esc normal, h/j/k/l move, / search, Ctrl+S save.', ...global];
   if (focus === 'panel') return ['Terminal: type command, Enter runs remotely, Esc returns to editor.', ...global];
   return global;
+}
+
+function normalizeUserPath(relativePath) {
+  const normalized = posix.normalize(String(relativePath ?? '').trim()).replace(/^\/+/u, '');
+  if (!normalized || normalized === '.' || normalized.startsWith('../') || normalized === '..') {
+    throw new Error('Enter a workspace-relative path inside the workspace.');
+  }
+  return normalized;
 }
 
 function nextFocus(focus) {
@@ -778,6 +959,18 @@ function parseSgrMouse(sequence) {
     x: Number(match[2]) - 1,
     y: Number(match[3]) - 1
   };
+}
+
+function isSafeTextInput(text) {
+  return typeof text === 'string' && text.length > 0 && !isControlSequence(text);
+}
+
+function isControlSequence(text) {
+  return /[\u0000-\u001F\u007F\u009B]/u.test(text);
+}
+
+function isMouseSequenceFragment(text) {
+  return /^[<;0-9mM]+$/u.test(text);
 }
 
 function friendlyError(error) {

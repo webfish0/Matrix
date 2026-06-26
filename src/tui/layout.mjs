@@ -22,7 +22,9 @@ export function computeLayout({ width, height }) {
   const statusHeight = 1;
   const titleHeight = mode === 'short' ? 1 : 2;
   const panelHeight = mode === 'wide' ? Math.max(6, Math.floor(height * 0.22)) : mode === 'medium' ? 5 : 0;
-  const activityWidth = mode === 'narrow' || mode === 'short' ? 0 : 3;
+  // Hidden for MVP: the activity rail is only useful once it switches real view
+  // containers with clear labels/help. Until then it is unexplained chrome.
+  const activityWidth = 0;
   const primaryWidth = mode === 'wide' ? 32 : mode === 'medium' ? 24 : 0;
   const secondaryWidth = mode === 'wide' ? 18 : 0;
   const bodyY = titleHeight;

@@ -1,5 +1,5 @@
 import { Writable } from 'node:stream';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { IdeSession } from '../src/ide/session.mjs';
 import { SshWorkspaceClient, workspaceFile } from '../src/remote/ssh-workspace.mjs';
 import { withSshFixture } from './ssh-fixture.mjs';
@@ -31,7 +31,7 @@ async function test(id, name, fn) {
   }
 }
 
-await test('MANUAL-MVP-001', 'end-user workflow uses help command palette mouse browse edit save search terminal resize dirty-exit and quit', async () => {
+await test('MANUAL-MVP-001', 'end-user workflow uses help command palette mouse browse edit save explorer file ops search terminal resize dirty-exit and quit', async () => {
   await withSshFixture(async ({ target, workspace }) => {
     const output = new CaptureStream();
     const client = new SshWorkspaceClient(target);
@@ -49,8 +49,34 @@ await test('MANUAL-MVP-001', 'end-user workflow uses help command palette mouse 
       'enter',
       'i',
       'text:// end-user edit ',
+      { type: 'rawInput', sequence: '\u001b[<0;10;5M' },
       'ctrl+s',
       'escape',
+      'ctrl+shift+p',
+      'text:new file',
+      'enter',
+      'text:notes/todo.md',
+      'enter',
+      'i',
+      'text:created from explorer workflow',
+      'ctrl+s',
+      'escape',
+      'ctrl+shift+p',
+      'text:rename',
+      'enter',
+      'text:notes/done.md',
+      'enter',
+      'ctrl+shift+p',
+      'text:delete',
+      'enter',
+      'escape',
+      'ctrl+shift+p',
+      'text:delete',
+      'enter',
+      'd',
+      'ctrl+p',
+      'text:src/app.ts',
+      'enter',
       '/',
       'text:end-user',
       'enter',
@@ -71,6 +97,7 @@ await test('MANUAL-MVP-001', 'end-user workflow uses help command palette mouse 
     ]);
 
     const transcript = output.text;
+    await rm('test-evidence/manual-product-mvp/frames', { recursive: true, force: true });
     await mkdir('test-evidence/manual-product-mvp/frames', { recursive: true });
     await writeFile('test-evidence/manual-product-mvp/transcript.txt', transcript, 'utf8');
     for (const [index, frame] of session.renderedFrames.entries()) {
@@ -80,17 +107,31 @@ await test('MANUAL-MVP-001', 'end-user workflow uses help command palette mouse 
 
     const saved = await client.readFile(workspaceFile(workspace, 'src/app.ts'));
     assert(saved.includes('end-user edit'), 'manual edit must be saved remotely');
+    assert(!saved.includes('[<0;10;5M'), 'raw mouse sequence must not be written to the editor');
+    assert(!saved.includes('\u001b'), 'terminal escape sequence must not be written to the editor');
+    let deletedFileMissing = false;
+    try {
+      await client.readFile(workspaceFile(workspace, 'notes/done.md'));
+    } catch {
+      deletedFileMissing = true;
+    }
+    assert(deletedFileMissing, 'confirmed delete must remove renamed remote file');
 
     assert(transcript.includes('Explorer'), 'transcript must show explorer');
     assert(transcript.includes('Editor: src/app.ts'), 'transcript must show active editor');
     assert(transcript.includes('Command help'), 'transcript must show command palette execution');
     assert(transcript.includes('INSERT'), 'transcript must show insert mode');
     assert(transcript.includes('Saved src/app.ts'), 'transcript must show save confirmation');
+    assert(transcript.includes('Created notes/todo.md'), 'transcript must show Explorer create file');
+    assert(transcript.includes('Renamed notes/todo.md to notes/done.md'), 'transcript must show Explorer rename file');
+    assert(transcript.includes('Delete cancelled'), 'transcript must show delete cancellation');
+    assert(transcript.includes('Deleted notes/done.md'), 'transcript must show confirmed delete');
     assert(transcript.includes('Search results'), 'transcript must show search results');
     assert(transcript.includes('ide-ok'), 'transcript must show remote terminal command output');
     assert(transcript.includes('Unsaved changes'), 'transcript must show dirty-exit protection');
     assert(transcript.includes('Quit cancelled'), 'transcript must show dirty-exit cancellation');
     assert(transcript.includes('Smith needs more space'), 'transcript must show minimum resize-safe screen');
+    assert(!transcript.includes('│E│'), 'default MVP UI must not show the unclear activity rail');
     assert(session.quitRequested, 'session must quit through user workflow');
 
   });

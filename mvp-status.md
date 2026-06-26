@@ -71,7 +71,7 @@ The existing verification confirms:
 | Run remote terminal command | Remote `/bin/echo terminal-ok` executes over SSH. |
 | Render terminal workbench | Workbench frame with Explorer/editor/panel/status/minibuffer/status line is captured under `test-evidence/product-mvp/frames/`. |
 | Screen-oriented manual flow | `npm run smith -- ide-demo` opens a full-screen terminal workbench. |
-| End-user workflow evidence | Scripted workflow uses help, command palette, mouse click, Explorer, Insert mode, save, search, terminal, resize, dirty-exit cancellation, and quit. |
+| End-user workflow evidence | Scripted workflow uses help, command palette, mouse click, Explorer, Insert mode, save, create, rename, delete-cancel, delete-confirm, search, terminal, resize, dirty-exit cancellation, and quit. |
 
 Existing evidence:
 
@@ -118,7 +118,6 @@ These gaps should be closed or explicitly accepted before closing the Product MV
 
 - live user acceptance on a real terminal, not only scripted evidence;
 - broader terminal compatibility testing for mouse/key sequences;
-- richer Explorer file operations: create, rename, delete, refresh confirmations;
 - fuller quick-open result picker instead of simple substring open;
 - true persistent PTY/multiplexing for long-running terminal commands;
 - save-failure and permission-denied evidence against an injected failure;

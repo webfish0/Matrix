@@ -57,6 +57,15 @@ export class SshWorkspaceClient {
     ]);
   }
 
+  async renamePath(fromRemotePath, toRemotePath) {
+    await this.run('mkdir', ['-p', dirname(toRemotePath)]);
+    await this.run('mv', ['--', fromRemotePath, toRemotePath]);
+  }
+
+  async deletePath(remotePath) {
+    await this.run('rm', ['-rf', '--', remotePath]);
+  }
+
   async readFile(remotePath) {
     return this.run(this.nodePath, [
       '-e',

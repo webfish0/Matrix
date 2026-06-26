@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -17,11 +17,43 @@ const captures = [
 
 for (const capture of captures) {
   const text = await readFile(capture.input, 'utf8');
+  await renderTextCapture(text, capture.outputBase);
+}
+
+await renderManualKeyFrames();
+
+async function renderManualKeyFrames() {
+  const framesDir = 'test-evidence/manual-product-mvp/frames';
+  const outputDir = 'test-evidence/manual-product-mvp/screenshots/frames';
+  const frameFiles = (await readdir(framesDir)).filter((file) => file.endsWith('.txt')).sort();
+  const loaded = [];
+  for (const file of frameFiles) {
+    loaded.push({ file, text: await readFile(`${framesDir}/${file}`, 'utf8') });
+  }
+  const selections = [
+    ['initial', (frame) => frame.file === '00-initial.txt'],
+    ['created-file', (frame) => frame.text.includes('Created notes/todo.md')],
+    ['renamed-file', (frame) => frame.text.includes('Renamed notes/todo.md to notes/done.md')],
+    ['delete-cancelled', (frame) => frame.text.includes('Delete cancelled.')],
+    ['delete-confirmed', (frame) => frame.text.includes('Deleted notes/done.md')],
+    ['search-results', (frame) => frame.text.includes('Search results')],
+    ['terminal-command', (frame) => frame.text.includes('ide-ok')],
+    ['minimum-size', (frame) => frame.text.includes('Smith needs more space')]
+  ];
+  for (const [name, predicate] of selections) {
+    const match = loaded.find(predicate);
+    if (match) {
+      await renderTextCapture(match.text, `${outputDir}/${name}`);
+    }
+  }
+}
+
+async function renderTextCapture(text, outputBase) {
   const svg = terminalSvg(text);
-  await mkdir(capture.outputBase.split('/').slice(0, -1).join('/'), { recursive: true });
-  await writeFile(`${capture.outputBase}.svg`, svg, 'utf8');
-  await execFileAsync('rsvg-convert', ['-o', `${capture.outputBase}.png`, `${capture.outputBase}.svg`]);
-  console.log(`Wrote ${capture.outputBase}.png`);
+  await mkdir(outputBase.split('/').slice(0, -1).join('/'), { recursive: true });
+  await writeFile(`${outputBase}.svg`, svg, 'utf8');
+  await execFileAsync('rsvg-convert', ['-o', `${outputBase}.png`, `${outputBase}.svg`]);
+  console.log(`Wrote ${outputBase}.png`);
 }
 
 function terminalSvg(text) {

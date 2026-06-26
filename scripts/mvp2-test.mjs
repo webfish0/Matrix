@@ -28,6 +28,8 @@ await test('T-008', 'workbench renders deterministic frames across responsive mo
   assert(minimum.layout.mode === 'minimum', 'minimum frame mode mismatch');
   assert(wide.rows.length === 40 && wide.rows.every((row) => row.length === 140), 'wide frame dimensions invalid');
   assert(minimum.text.includes('Smith needs more space'), 'minimum frame must show resize message');
+  assert(medium.layout.regions.activity.width === 0, 'activity rail must be hidden until it has useful MVP behavior');
+  assert(!medium.hitRegions.some((region) => region.id === 'activity'), 'activity rail hit region must not exist when hidden');
 });
 
 await test('T-009', 'resize layout preserves editor and rebuilds hit regions', async () => {

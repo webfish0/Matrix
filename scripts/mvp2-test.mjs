@@ -1,11 +1,29 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { resolveKeybinding } from '../src/tui/commands.mjs';
+import { Writable } from 'node:stream';
+import { normalizeTerminalKey, resolveKeybinding } from '../src/tui/commands.mjs';
 import { computeLayout } from '../src/tui/layout.mjs';
 import { renderWorkbench, routePointer } from '../src/tui/render.mjs';
 import { TerminalScreen } from '../src/tui/terminal-screen.mjs';
+import { IdeSession } from '../src/ide/session.mjs';
 import { writeJson } from './lib.mjs';
 
 const results = [];
+
+class NullStream extends Writable {
+  constructor() {
+    super();
+    this.columns = 100;
+    this.rows = 30;
+  }
+
+  _write(_chunk, _encoding, callback) {
+    callback();
+  }
+}
+
+class FakeClient {
+  async writeFile() {}
+}
 
 async function test(id, name, fn) {
   const startedAt = Date.now();
@@ -42,10 +60,45 @@ await test('T-009', 'resize layout preserves editor and rebuilds hit regions', a
 });
 
 await test('T-010', 'core keyboard commands resolve with terminal-aware enablement', async () => {
+  assert(resolveKeybinding('f1').command === 'workbench.action.showCommands', 'F1 should open command palette');
+  assert(resolveKeybinding(':').command === 'workbench.action.showCommands', ': should open command palette');
   assert(resolveKeybinding('ctrl+p').command === 'workbench.action.quickOpen', 'Ctrl+P should open quick open');
-  assert(resolveKeybinding('ctrl+shift+p').command === 'workbench.action.showCommands', 'Ctrl+Shift+P should open commands');
+  assert(resolveKeybinding('f2').command === 'workbench.action.terminal.toggleTerminal', 'F2 should open terminal');
+  assert(resolveKeybinding('ctrl+shift+p').command === 'workbench.action.showCommands', 'Ctrl+Shift+P should remain optional command alias when reported');
   const captured = resolveKeybinding('ctrl+p', { terminalFocus: true });
   assert(captured.enabled === false && captured.reason.includes('terminal focus'), 'terminal focus should report captured keybinding');
+});
+
+await test('T-010-keypress', 'actual terminal keypress objects route to visible MVP commands', async () => {
+  assert(normalizeTerminalKey({ name: 'return' }, '\r') === 'enter', 'return key should normalize to enter');
+  assert(normalizeTerminalKey({ name: 'f1' }, '') === 'f1', 'F1 should normalize');
+  assert(normalizeTerminalKey({}, ':') === ':', 'colon should normalize as command key');
+  assert(normalizeTerminalKey({ ctrl: true, name: 'p' }, '\u0010') === 'ctrl+p', 'Ctrl+P should normalize');
+  assert(normalizeTerminalKey({ name: 'f2' }, '') === 'f2', 'F2 should normalize');
+
+  const session = new IdeSession({ client: new FakeClient(), workspace: '/workspace', outputWriter: new NullStream() });
+  await session.handleKey({ name: 'f1' }, '');
+  assert(session.mode === 'command' && session.minibuffer.prompt === 'Command palette:', 'F1 keypress should open command palette');
+  await session.handleKey({ name: 'escape' }, '\u001b');
+  await session.handleKey({}, ':');
+  assert(session.mode === 'command' && session.minibuffer.prompt === 'Command palette:', 'colon keypress should open command palette');
+  await session.handleKey({ name: 'escape' }, '\u001b');
+  await session.handleKey({ ctrl: true, name: 'p' }, '\u0010');
+  assert(session.mode === 'command' && session.minibuffer.kind === 'quickOpen', 'Ctrl+P keypress should open quick open');
+  await session.handleKey({ name: 'escape' }, '\u001b');
+  await session.handleKey({ name: 'f2' }, '');
+  assert(session.mode === 'terminal' && session.focus === 'panel', 'F2 keypress should focus terminal panel');
+
+  session.mode = 'normal';
+  session.focus = 'editor';
+  session.activeFile = 'src/app.ts';
+  session.bufferLines = ['abc'];
+  session.cursor = { line: 0, column: 0 };
+  await session.handleKey({ name: 'i' }, 'i');
+  assert(session.mode === 'insert', 'i keypress in Normal mode should enter Insert mode');
+  assert(session.bufferLines[0] === 'abc', 'i keypress in Normal mode must not insert text');
+  await session.handleKey({ name: 'x' }, 'x');
+  assert(session.bufferLines[0] === 'xabc', 'printable key in Insert mode should insert text');
 });
 
 await test('T-011', 'mouse hit routing selects topmost region', async () => {
@@ -116,6 +169,7 @@ function assert(condition, message) {
     throw new Error(message);
   }
 }
+
 
 function escapeXml(value) {
   return String(value)

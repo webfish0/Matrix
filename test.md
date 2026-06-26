@@ -113,6 +113,8 @@ test-evidence/manual-product-mvp/screenshots/frames/
 
 Tests should fail if a required action depends on hidden knowledge. Missing labels, missing recovery hints, hidden mode exits, or output that is not visible to the user are UX defects.
 
+Keyboard evidence must include actual terminal keypress objects or sequences for advertised bindings. Logical action labels alone are insufficient because terminal modifiers such as `Ctrl+Shift` may be unavailable or indistinguishable from other chords.
+
 ## 6. Planned verification
 
 | ID | Test | Requirements | Pass condition |

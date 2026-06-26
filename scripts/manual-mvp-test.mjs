@@ -51,7 +51,8 @@ class TerminalUser {
     if (cue) {
       this.see(goal, cue);
     }
-    await this.session.performUserAction(key);
+    const keypress = keypressFor(key);
+    await this.session.handleKey(keypress.key, keypress.str);
     const screen = this.capture(goal);
     if (expectedText) {
       const expected = Array.isArray(expectedText) ? expectedText : [expectedText];
@@ -168,7 +169,7 @@ await test('USER-MVP-001', 'user completes IDE tasks by reading terminal feedbac
     await user.press('open contextual help because the status line says help is available', '?', ['Explorer help', 'Esc closes this help.']);
     await user.press('close help using the visible close instruction', 'escape', 'Help closed.');
 
-    await user.press('discover commands from the visible command-palette shortcut', 'ctrl+shift+p', 'Command palette');
+    await user.press('discover commands from the visible command-palette shortcut', 'f1', 'Command palette');
     await user.type('ask the command palette for help', 'help');
     await user.press('run the selected help command', 'enter', ['Command help', 'Esc closes this help.']);
     await user.press('close command help using the visible close instruction', 'escape', 'Help closed.');
@@ -181,7 +182,7 @@ await test('USER-MVP-001', 'user completes IDE tasks by reading terminal feedbac
     await user.press('save the dirty file using the visible save shortcut', 'ctrl+s', 'Saved src/app.ts');
     await user.press('return to Normal mode after saving', 'escape', 'NORMAL');
 
-    await user.press('open command palette to create a file', 'ctrl+shift+p', 'Command palette');
+    await user.press('open command palette to create a file', 'f1', 'Command palette');
     await user.type('choose the visible command path for creating a file', 'new file');
     await user.press('submit create-file command and wait for file path prompt', 'enter', 'New file:');
     await user.type('enter new file path in the visible prompt', 'notes/todo.md');
@@ -191,18 +192,18 @@ await test('USER-MVP-001', 'user completes IDE tasks by reading terminal feedbac
     await user.press('save the new file', 'ctrl+s', 'Saved notes/todo.md');
     await user.press('return to Normal mode after saving the new file', 'escape', 'NORMAL');
 
-    await user.press('open command palette to rename the active file', 'ctrl+shift+p', 'Command palette');
+    await user.press('open command palette to rename the active file', 'f1', 'Command palette');
     await user.type('choose rename from the command palette', 'rename');
     await user.press('submit rename command and wait for destination prompt', 'enter', 'Rename notes/todo.md to:');
     await user.type('enter rename destination', 'notes/done.md');
     await user.press('complete rename and see confirmation', 'enter', ['Renamed notes/todo.md to notes/done.md', 'Editor: notes/done.md']);
 
-    await user.press('open command palette to delete the active file', 'ctrl+shift+p', 'Command palette');
+    await user.press('open command palette to delete the active file', 'f1', 'Command palette');
     await user.type('choose delete from command palette', 'delete');
     await user.press('open delete confirmation and read the destructive action prompt', 'enter', ['Delete file', 'Press d to delete permanently']);
     await user.press('cancel delete using the visible escape path', 'escape', 'Delete cancelled.');
 
-    await user.press('open command palette to delete the active file again', 'ctrl+shift+p', 'Command palette');
+    await user.press('open command palette to delete the active file again', 'f1', 'Command palette');
     await user.type('choose delete again after confirming the file is still active', 'delete');
     await user.press('open delete confirmation again', 'enter', ['Delete file', 'Press d to delete permanently']);
     await user.press('confirm delete using the visible key in the prompt', 'd', 'Deleted notes/done.md');
@@ -215,7 +216,7 @@ await test('USER-MVP-001', 'user completes IDE tasks by reading terminal feedbac
     await user.type('search for the text just added', 'end-user');
     await user.press('submit search and inspect result feedback', 'enter', ['Search results', 'src/app.ts']);
 
-    await user.press('open terminal using the visible terminal shortcut', 'ctrl+`', 'TERMINAL');
+    await user.press('open terminal using the visible terminal shortcut', 'f2', 'TERMINAL');
     await user.type('type a remote terminal command into the terminal panel', '/bin/echo ide-ok');
     await user.press('run the terminal command and read its output', 'enter', ['ide-ok', 'exit 0']);
     await user.press('leave terminal mode using Escape', 'escape', 'Returned to editor.');
@@ -302,9 +303,10 @@ function visibleCueFor(key) {
   const cues = {
     '?': '? Help',
     escape: 'Esc',
-    'ctrl+shift+p': 'Ctrl+Shift+P',
+    f1: 'F1',
+    ':': 'Commands:',
     'ctrl+p': 'Ctrl+P',
-    'ctrl+`': 'Ctrl+`',
+    f2: 'F2',
     'ctrl+s': 'Ctrl+S',
     '/': '/ search',
     i: 'i to edit',
@@ -313,6 +315,24 @@ function visibleCueFor(key) {
     d: 'Press d'
   };
   return cues[key] ?? '';
+}
+
+function keypressFor(key) {
+  const printable = key.length === 1 ? { key: { name: key }, str: key } : null;
+  const keys = {
+    f1: { key: { name: 'f1' }, str: '' },
+    f2: { key: { name: 'f2' }, str: '' },
+    'ctrl+p': { key: { ctrl: true, name: 'p' }, str: '\u0010' },
+    'ctrl+s': { key: { ctrl: true, name: 's' }, str: '\u0013' },
+    enter: { key: { name: 'return' }, str: '\r' },
+    escape: { key: { name: 'escape' }, str: '\u001b' },
+    tab: { key: { name: 'tab' }, str: '\t' }
+  };
+  const event = keys[key] ?? printable;
+  if (!event) {
+    throw new Error(`No keypress fixture for ${key}`);
+  }
+  return event;
 }
 
 function inputPromptCue(session) {

@@ -186,7 +186,7 @@ Connects to real remote systems. Needs clear host/workspace identity, safe save 
 
 **Primary flow:**
 
-1. User presses `Ctrl+Shift+P`.
+1. User presses `F1` or `:`.
 2. Command palette opens.
 3. User types “save”.
 4. Smith filters commands and shows shortcuts.

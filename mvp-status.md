@@ -51,9 +51,9 @@ i              enter Insert mode in the editor
 Esc            leave Insert/Search/Terminal/help state
 Ctrl+S         save active file
 /              workspace search
-Ctrl+Shift+P   command palette
+F1 or :        command palette
 Ctrl+P         quick open
-Ctrl+`         integrated remote terminal
+F2             integrated remote terminal
 q              quit; dirty buffers require confirmation
 ```
 

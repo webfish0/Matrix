@@ -84,14 +84,14 @@ Required global keys:
 
 | Key | Action |
 | --- | --- |
-| `Ctrl+Shift+P` | Command palette. |
+| `F1` or `:` | Command palette. |
 | `Ctrl+P` | Quick open file. |
 | `Ctrl+B` | Toggle Explorer/sidebar. |
 | `Ctrl+J` | Toggle bottom panel. |
 | `Ctrl+S` | Save active buffer. |
 | `Ctrl+F` | Find in active buffer. |
 | `Ctrl+Shift+F` | Search workspace. |
-| <kbd>Ctrl</kbd>+<kbd>`</kbd> | Toggle integrated terminal. |
+| `F2` | Toggle integrated terminal. |
 | `Esc` | Cancel overlay, return to previous focus, or leave transient mode. |
 | `?` | Context help for focused component. |
 
@@ -388,7 +388,7 @@ Failures must show:
 
 ### 6.2 Command palette
 
-The command palette is the discoverability backbone.
+The command palette is the discoverability backbone. `F1` and `:` are the primary terminal-safe bindings. `Ctrl+Shift+P` may be supported as an optional compatibility alias only when the terminal reports it distinctly; it must not be the only visible path.
 
 It must support:
 

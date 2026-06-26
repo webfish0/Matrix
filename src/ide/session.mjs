@@ -3,6 +3,7 @@ import { stdin as processInput, stdout as processOutput } from 'node:process';
 import { posix } from 'node:path';
 import { workspaceFile } from '../remote/ssh-workspace.mjs';
 import { renderWorkbench } from '../tui/render.mjs';
+import { normalizeTerminalKey } from '../tui/commands.mjs';
 
 const DEFAULT_WIDTH = 100;
 const DEFAULT_HEIGHT = 30;
@@ -151,41 +152,40 @@ export class IdeSession {
   }
 
   async handleKey(key, str = '') {
-    if (key.ctrl && key.name === 'c') {
+    const name = normalizeTerminalKey(key, str);
+    if (name === 'ctrl+c') {
       await this.requestQuit();
       return;
     }
-    if (key.ctrl && key.shift && key.name === 'p') {
+    if ((name === 'f1' || name === ':' || name === 'ctrl+shift+p') && this.mode === 'normal') {
       this.openCommandPalette();
       return;
     }
-    if (key.ctrl && key.name === 'p') {
+    if (name === 'ctrl+p' && this.mode === 'normal') {
       this.openQuickOpen();
       return;
     }
-    if (key.ctrl && key.name === 's') {
+    if (name === 'ctrl+s') {
       await this.save();
       return;
     }
-    if (key.ctrl && key.name === 'b') {
+    if (name === 'ctrl+b') {
       this.focus = this.focus === 'explorer' ? 'editor' : 'explorer';
       this.setMessage(`Focus ${this.focus}`);
       return;
     }
-    if (key.ctrl && key.name === 'j') {
+    if ((name === 'f2' || name === 'ctrl+j' || name === 'ctrl+`') && this.mode === 'normal') {
       this.focus = 'panel';
       this.mode = 'terminal';
       this.setMessage('Terminal focus. Type a command and press Enter. Esc returns to Normal mode.');
       return;
     }
-    if (key.ctrl && key.name === '`') {
-      this.focus = 'panel';
-      this.mode = 'terminal';
-      return;
-    }
-    const name = keyName(key);
     if (!key.ctrl && !key.meta && str && str.length === 1 && !['return', 'enter', 'escape', 'backspace', 'tab'].includes(name)) {
-      await this.handleText(str);
+      if (this.mode === 'normal') {
+        await this.handleNamedKey(name);
+      } else {
+        await this.handleText(str);
+      }
       return;
     }
     await this.handleNamedKey(name);
@@ -234,7 +234,7 @@ export class IdeSession {
       this.setMessage(`Focus ${this.focus}`);
       return;
     }
-    if (name === 'ctrl+shift+p') {
+    if (name === 'f1' || name === ':' || name === 'ctrl+shift+p') {
       this.openCommandPalette();
       return;
     }
@@ -254,7 +254,7 @@ export class IdeSession {
       await this.save();
       return;
     }
-    if (name === 'ctrl+`' || name === 'terminal') {
+    if (name === 'f2' || name === 'ctrl+`' || name === 'ctrl+j' || name === 'terminal') {
       this.mode = 'terminal';
       this.focus = 'panel';
       this.setMessage('Terminal mode. Type command, Enter runs, Esc returns.');
@@ -881,13 +881,6 @@ export class IdeSession {
     this.renderSnapshot('legacy script');
     return translated;
   }
-}
-
-function keyName(key) {
-  if (!key) return '';
-  if (key.ctrl && key.shift && key.name) return `ctrl+shift+${key.name}`;
-  if (key.ctrl && key.name) return `ctrl+${key.name}`;
-  return key.name ?? key.sequence ?? '';
 }
 
 function splitLines(text) {

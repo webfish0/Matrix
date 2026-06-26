@@ -77,7 +77,7 @@ function drawTitle(cells, area, state) {
   const title = ` Smith ${state.remote ?? 'local'} ${state.connection ?? 'unknown'}  ${state.workspace ?? ''}  ${state.activeFile ?? 'No file'}${dirty} `;
   writeText(cells, 1, area.y, truncate(title, area.width - 2));
   if (area.height > 1) {
-    writeText(cells, 1, area.y + 1, truncate(` Focus: ${state.focus ?? 'editor'}   Help: ?   Commands: Ctrl+Shift+P   Quick open: Ctrl+P   Terminal: Ctrl+\` `, area.width - 2));
+    writeText(cells, 1, area.y + 1, truncate(` Focus: ${state.focus ?? 'editor'}   Help: ?   Commands: F1 or :   Quick open: Ctrl+P   Terminal: F2 `, area.width - 2));
   }
 }
 
@@ -174,7 +174,7 @@ function drawMinibuffer(cells, y, width, state) {
 function drawStatus(cells, area, state) {
   fillRegion(cells, area, ' ');
   const dirty = state.dirty ? '●' : '✓';
-  const status = `${state.mode ?? 'NORMAL'}  SSH ${state.connection ?? 'unknown'}  ${state.branch ?? 'main'}  ${state.activeFile ?? 'No file'} ${dirty}  Ln ${state.cursorLine ?? 1} Col ${state.cursorColumn ?? 1}  Problems 0  ? Help  q quit`;
+  const status = `${state.mode ?? 'NORMAL'}  SSH ${state.connection ?? 'unknown'}  ${state.branch ?? 'main'}  ${state.activeFile ?? 'No file'} ${dirty}  Ln ${state.cursorLine ?? 1} Col ${state.cursorColumn ?? 1}  Problems 0  ? Help  F1 commands  q quit`;
   writeText(cells, 0, area.y, truncate(status, area.width));
 }
 

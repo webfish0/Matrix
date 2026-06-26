@@ -71,7 +71,7 @@ The existing verification confirms:
 | Run remote terminal command | Remote `/bin/echo terminal-ok` executes over SSH. |
 | Render terminal workbench | Workbench frame with Explorer/editor/panel/status/minibuffer/status line is captured under `test-evidence/product-mvp/frames/`. |
 | Screen-oriented manual flow | `npm run smith -- ide-demo` opens a full-screen terminal workbench. |
-| End-user workflow evidence | Scripted workflow uses help, command palette, mouse click, Explorer, Insert mode, save, create, rename, delete-cancel, delete-confirm, search, terminal, resize, dirty-exit cancellation, and quit. |
+| End-user workflow evidence | `USER-MVP-001` drives the terminal from a user perspective: each step observes visible screen feedback, performs the visible action, and checks the next user-visible result for help, command palette, mouse click, Explorer, Insert mode, save, create, rename, delete-cancel, delete-confirm, search, terminal, resize, dirty-exit cancellation, and quit. |
 
 Existing evidence:
 
@@ -81,7 +81,9 @@ test-evidence/product-mvp/results.json
 test-evidence/product-mvp/junit/product-mvp.xml
 test-evidence/product-mvp/frames/workbench-100x30.txt
 test-evidence/manual-product-mvp/transcript.txt
+test-evidence/manual-product-mvp/user-journey.json
 test-evidence/manual-product-mvp/screenshots/manual-session.png
+test-evidence/manual-product-mvp/screenshots/frames/
 test-evidence/product-mvp/screenshots/workbench-100x30.png
 ```
 

@@ -77,7 +77,7 @@ function drawTitle(cells, area, state) {
   const title = ` Smith ${state.remote ?? 'local'} ${state.connection ?? 'unknown'}  ${state.workspace ?? ''}  ${state.activeFile ?? 'No file'}${dirty} `;
   writeText(cells, 1, area.y, truncate(title, area.width - 2));
   if (area.height > 1) {
-    writeText(cells, 1, area.y + 1, truncate(` Focus: ${state.focus ?? 'editor'}   Help: ?   Commands: Ctrl+Shift+P   Quick open: Ctrl+P `, area.width - 2));
+    writeText(cells, 1, area.y + 1, truncate(` Focus: ${state.focus ?? 'editor'}   Help: ?   Commands: Ctrl+Shift+P   Quick open: Ctrl+P   Terminal: Ctrl+\` `, area.width - 2));
   }
 }
 
@@ -125,7 +125,7 @@ function drawEditor(cells, area, state) {
     const cursorText = line.cursor ? withCursor(line.text, line.cursorColumn ?? 0, state.mode) : line.text;
     writeText(cells, area.x + 1, area.y + 1 + index, truncate(`${prefix}${lineNumber} ${cursorText}`, area.width - 2));
   });
-  const footer = `${state.mode ?? 'NORMAL'}  ${state.dirty ? 'Unsaved changes' : 'Saved'}  Ctrl+S save  / search`;
+  const footer = `${state.mode ?? 'NORMAL'}  ${state.dirty ? 'Unsaved changes' : 'Saved'}  i to edit  Esc normal  Ctrl+S save  / search`;
   writeText(cells, area.x + 1, area.y + area.height - 2, truncate(footer, area.width - 2));
 }
 
@@ -142,14 +142,14 @@ function drawPanel(cells, area, state) {
   const terminal = state.terminal ?? {};
   const searchResults = state.searchResults ?? [];
   let lines = [];
-  if (state.focus === 'panel' && state.mode === 'TERMINAL') {
+  if (state.focus === 'panel' && state.mode === 'TERMINAL' && (!terminal.last || terminal.input)) {
     lines.push(`$ ${terminal.input ?? ''}`);
   }
   if (terminal.last) {
     lines.push(`$ ${terminal.last.command}`);
-    lines.push(`exit ${terminal.last.status}`);
     if (terminal.last.stdout) lines.push(...terminal.last.stdout.trimEnd().split(/\r?\n/u));
     if (terminal.last.stderr) lines.push(...terminal.last.stderr.trimEnd().split(/\r?\n/u));
+    lines.push(`exit ${terminal.last.status}`);
   }
   if (searchResults.length > 0) {
     lines.push(`Search results (${searchResults.length})`);
@@ -174,7 +174,7 @@ function drawMinibuffer(cells, y, width, state) {
 function drawStatus(cells, area, state) {
   fillRegion(cells, area, ' ');
   const dirty = state.dirty ? '●' : '✓';
-  const status = `${state.mode ?? 'NORMAL'}  SSH ${state.connection ?? 'unknown'}  ${state.branch ?? 'main'}  ${state.activeFile ?? 'No file'} ${dirty}  Ln ${state.cursorLine ?? 1} Col ${state.cursorColumn ?? 1}  Problems 0  ? Help`;
+  const status = `${state.mode ?? 'NORMAL'}  SSH ${state.connection ?? 'unknown'}  ${state.branch ?? 'main'}  ${state.activeFile ?? 'No file'} ${dirty}  Ln ${state.cursorLine ?? 1} Col ${state.cursorColumn ?? 1}  Problems 0  ? Help  q quit`;
   writeText(cells, 0, area.y, truncate(status, area.width));
 }
 

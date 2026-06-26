@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -25,19 +25,20 @@ await renderManualKeyFrames();
 async function renderManualKeyFrames() {
   const framesDir = 'test-evidence/manual-product-mvp/frames';
   const outputDir = 'test-evidence/manual-product-mvp/screenshots/frames';
+  await rm(outputDir, { recursive: true, force: true });
   const frameFiles = (await readdir(framesDir)).filter((file) => file.endsWith('.txt')).sort();
   const loaded = [];
   for (const file of frameFiles) {
     loaded.push({ file, text: await readFile(`${framesDir}/${file}`, 'utf8') });
   }
   const selections = [
-    ['initial', (frame) => frame.file === '00-initial.txt'],
+    ['initial', (frame, index) => index === 0 || frame.file.includes('orient-in-the-terminal-ide')],
     ['created-file', (frame) => frame.text.includes('Created notes/todo.md')],
     ['renamed-file', (frame) => frame.text.includes('Renamed notes/todo.md to notes/done.md')],
     ['delete-cancelled', (frame) => frame.text.includes('Delete cancelled.')],
     ['delete-confirmed', (frame) => frame.text.includes('Deleted notes/done.md')],
     ['search-results', (frame) => frame.text.includes('Search results')],
-    ['terminal-command', (frame) => frame.text.includes('ide-ok')],
+    ['terminal-command', (frame) => frame.text.includes('ide-ok') && frame.text.includes('exit 0')],
     ['minimum-size', (frame) => frame.text.includes('Smith needs more space')]
   ];
   for (const [name, predicate] of selections) {

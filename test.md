@@ -92,6 +92,27 @@ test-evidence/<run-id>/
 
 Source content, credentials, connection tokens, private keys and environment secrets must not appear in evidence.
 
+### 5.1 User-perspective evidence
+
+Product MVP user-facing tests must be written as user journeys, not internal command scripts. Each operation should record:
+
+- the user's goal;
+- the visible terminal cue or feedback the user observes before acting;
+- the terminal action taken, such as key press, typed text, mouse click, or resize;
+- the visible result the user sees after the action;
+- any remote readback needed to prove the visible action changed the SSH workspace safely.
+
+The manual Product MVP journey writes:
+
+```text
+test-evidence/manual-product-mvp/user-journey.json
+test-evidence/manual-product-mvp/transcript.txt
+test-evidence/manual-product-mvp/frames/
+test-evidence/manual-product-mvp/screenshots/frames/
+```
+
+Tests should fail if a required action depends on hidden knowledge. Missing labels, missing recovery hints, hidden mode exits, or output that is not visible to the user are UX defects.
+
 ## 6. Planned verification
 
 | ID | Test | Requirements | Pass condition |

@@ -220,7 +220,7 @@ export class IdeSession {
       this.overlay = {
         kind: 'help',
         title: `${titleCase(this.focus)} help`,
-        lines: helpLines(this.focus)
+        lines: [...helpLines(this.focus), 'Esc closes this help.']
       };
       return;
     }
@@ -595,7 +595,7 @@ export class IdeSession {
   openCommandPalette() {
     this.mode = 'command';
     this.focus = 'minibuffer';
-    this.minibuffer = { kind: 'command', prompt: ':', input: '', message: 'Command palette: save, search, quick open, terminal, help, quit' };
+    this.minibuffer = { kind: 'command', prompt: 'Command palette:', input: '', message: 'Commands: save, search, quick open, terminal, help, quit, new file, rename, delete' };
   }
 
   openQuickOpen() {
@@ -628,7 +628,7 @@ export class IdeSession {
       this.mode = 'terminal';
       this.focus = 'panel';
     } else if (command.includes('help')) {
-      this.overlay = { kind: 'help', title: 'Command help', lines: helpLines('global') };
+      this.overlay = { kind: 'help', title: 'Command help', lines: [...helpLines('global'), 'Esc closes this help.'] };
     } else if (command.includes('quit')) {
       await this.requestQuit();
     } else {

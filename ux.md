@@ -1,7 +1,7 @@
 # Smith UX Specification and Wireframes
 
 Status: Proposed
-Date: 25 June 2026
+Date: 26 June 2026
 
 ## 1. Purpose
 
@@ -18,6 +18,8 @@ This document is an implementation contract for:
 - terminal wireframes for the main workbench states.
 
 Architecture is defined in [design.md](design.md), requirements in [requirements.md](requirements.md), verification in [test.md](test.md), and implementation work in [backlog.md](backlog.md).
+
+For the Product MVP, [terminal-ide-style-guide.md](terminal-ide-style-guide.md) and [terminal-ide-user-stories.md](terminal-ide-user-stories.md) take priority over broad VS Code parity. The MVP must first be a usable terminal IDE before it expands toward deeper VS Code workbench parity.
 
 ## 2. UX baseline
 
@@ -40,6 +42,8 @@ The baseline references are:
 - VS Code Accessibility: <https://code.visualstudio.com/docs/configure/accessibility/accessibility>
 
 ## 3. UX principles
+
+The terminal IDE reset adds one overriding rule: every visible component must be useful to the user. Static frames, decorative panels, and command-only core workflows are not acceptable Product MVP UX.
 
 ### 3.1 Editor-first
 
@@ -795,4 +799,3 @@ Smith must satisfy these requirements before feature completion:
 | Extensions | FR-012, FR-013, FR-014 | SMITH-023, SMITH-024 | T-014, T-023 |
 | Trust/security | FR-014, NFR-007 | SMITH-025 | T-024, T-025 |
 | Recovery | FR-015, NFR-005, NFR-012 | SMITH-009, SMITH-026 | T-019, T-020 |
-

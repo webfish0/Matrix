@@ -1,11 +1,26 @@
 # Smith Implementation Backlog
 
-Status: Proposed
-Date: 23 June 2026
+Status: Proposed, revised after UX reset
+Date: 26 June 2026
 
 This backlog is the source for GitHub issues and the **Smith** GitHub Project. All new items start in `Todo`. Each issue must link its pull request and test evidence before moving to `Done`.
 
-UX behavior, UI/function mappings, and terminal wireframes are defined in [ux.md](ux.md). Delivery order, MVP grouping, priority policy, and project-management rules are defined in [delivery-plan.md](delivery-plan.md). Current MVP verification status is recorded in [mvp-status.md](mvp-status.md). UI implementation issues must reference the relevant UX section and wireframe before moving to `In Progress`.
+UX behavior, UI/function mappings, and terminal wireframes are defined in [ux.md](ux.md). Product MVP terminal UI policy is defined in [terminal-ide-style-guide.md](terminal-ide-style-guide.md), and the required MVP use cases/user stories are defined in [terminal-ide-user-stories.md](terminal-ide-user-stories.md). Delivery order, MVP grouping, priority policy, and project-management rules are defined in [delivery-plan.md](delivery-plan.md). Current MVP verification status is recorded in [mvp-status.md](mvp-status.md). UI implementation issues must reference the relevant UX section and wireframe before moving to `In Progress`.
+
+## UX reset priority
+
+The current implementation has useful SSH, workspace, render, and evidence primitives, but the end-user Product MVP is not complete. The next implementation work must be grouped around usable workflows:
+
+1. interactive terminal lifecycle and event loop;
+2. visible focus and Normal/Insert/Command/Search/Terminal modes;
+3. Explorer tree navigation with keyboard and mouse;
+4. text editor interaction with dirty state, save, and failure recovery;
+5. minibuffer for command/search/prompt/error flows;
+6. command palette and context help;
+7. integrated remote terminal panel;
+8. resize-safe layouts;
+9. dirty-buffer exit/disconnect protection;
+10. end-user screenshots and tester evidence for each MVP story.
 
 ## Epic A — Code OSS baseline and product boundaries
 

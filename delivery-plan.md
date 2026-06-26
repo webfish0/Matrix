@@ -1,7 +1,7 @@
 # Smith Delivery Plan
 
-Status: Proposed
-Date: 25 June 2026
+Status: Proposed, revised after UX reset
+Date: 26 June 2026
 
 ## 1. Purpose
 
@@ -30,7 +30,9 @@ Product MVP means a basic VS Code-like IDE accessible over a terminal through SS
 7. the integrated terminal runs a remote shell command;
 8. the command palette exposes core commands;
 9. mouse click, wheel, resize, and keyboard-only operation work for the above;
-10. end-to-end evidence is generated against an SSH target.
+10. end-to-end evidence is generated against an SSH target;
+11. the user can complete the prioritized MVP stories in [terminal-ide-user-stories.md](terminal-ide-user-stories.md) without relying on hidden internal commands;
+12. visible behavior follows [terminal-ide-style-guide.md](terminal-ide-style-guide.md).
 
 Product MVP verification is represented by:
 
@@ -38,13 +40,13 @@ Product MVP verification is represented by:
 npm run verify:product-mvp
 ```
 
-Manual Product MVP use is represented by:
+Current manual smoke use is represented by:
 
 ```bash
 npm run smith -- ide-demo
 ```
 
-The command starts a disposable localhost OpenSSH server and provides a terminal IDE prompt for the basic SSH workspace flow without requiring language extensions.
+The command starts a disposable localhost OpenSSH server and provides a command-driven prompt for the basic SSH workspace flow without requiring language extensions. This is useful smoke evidence, but it is not sufficient for Product MVP completion.
 
 To connect to a supplied SSH target, run:
 
@@ -52,7 +54,7 @@ To connect to a supplied SSH target, run:
 npm run smith -- ide --host <host> --workspace <remote-path> --identity <private-key> --user <user> --port <port>
 ```
 
-Requirements remain in [requirements.md](requirements.md), architecture in [design.md](design.md), UX in [ux.md](ux.md), tests in [test.md](test.md), and task details in [backlog.md](backlog.md).
+Requirements remain in [requirements.md](requirements.md), architecture in [design.md](design.md), UX in [ux.md](ux.md), MVP terminal style in [terminal-ide-style-guide.md](terminal-ide-style-guide.md), user stories in [terminal-ide-user-stories.md](terminal-ide-user-stories.md), tests in [test.md](test.md), and task details in [backlog.md](backlog.md).
 
 ## 2. Delivery rules
 
@@ -169,6 +171,7 @@ Exit criteria:
 - command palette and quick input are usable by keyboard and mouse;
 - per-frame hit regions route clicks, drags, wheels, and context actions correctly;
 - integrated remote PTY parses output into Smith’s internal terminal model and cannot take over the outer terminal.
+- visible modes, minibuffer prompts, and context help satisfy the MVP style guide.
 
 ### MVP-3: Remote editing and workspace navigation
 
@@ -191,6 +194,7 @@ Exit criteria:
 - Unicode position conversion is tested with property cases;
 - editor tabs/groups preserve state through resize;
 - Problems and Output provide navigation and basic filtering.
+- the prioritized browse, edit/save, search, resize, and dirty-exit user stories pass with end-user screenshots.
 
 ### MVP-4: Language and extension MVP
 

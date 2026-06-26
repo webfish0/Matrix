@@ -40,13 +40,13 @@ Product MVP verification is represented by:
 npm run verify:product-mvp
 ```
 
-Current manual smoke use is represented by:
+Current manual use is represented by:
 
 ```bash
 npm run smith -- ide-demo
 ```
 
-The command starts a disposable localhost OpenSSH server and provides a command-driven prompt for the basic SSH workspace flow without requiring language extensions. This is useful smoke evidence, but it is not sufficient for Product MVP completion.
+The command starts a disposable localhost OpenSSH server and enters a full-screen terminal IDE for the basic SSH workspace flow without requiring language extensions. Scripted evidence now covers the primary end-user workflow, but live user acceptance is still required before closing the Product MVP gate.
 
 To connect to a supplied SSH target, run:
 

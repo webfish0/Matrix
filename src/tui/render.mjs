@@ -1,4 +1,4 @@
-import { computeLayout } from './layout.mjs';
+import { computeLayout, rect } from './layout.mjs';
 
 export function renderWorkbench({ width, height, state = {} }) {
   const layout = computeLayout({ width, height });
@@ -7,64 +7,59 @@ export function renderWorkbench({ width, height, state = {} }) {
 
   if (layout.mode === 'minimum') {
     writeText(cells, 1, 1, 'Smith needs more space');
-    writeText(cells, 1, 2, `Current: ${width}x${height}   Minimum: 60x14`);
-    writeText(cells, 1, 3, `Connection: ${state.connection ?? 'unknown'}   Unsaved: ${state.unsaved ?? 0}`);
+    writeText(cells, 1, 2, 'Smith needs at least 60x14 cells.');
+    writeText(cells, 1, 3, `Current: ${width}x${height}`);
+    writeText(cells, 1, 5, `Connection: ${state.connection ?? 'unknown'}`);
+    writeText(cells, 1, 6, `Unsaved files: ${state.unsaved ? state.activeFile : 'none'}`);
+    writeText(cells, 1, 8, 'Resize terminal or press Ctrl+C to exit safely.');
     hitRegions.push(region('message', layout.regions.message, 0, ['focus']));
     return frame(layout, cells, hitRegions);
   }
 
   const { regions } = layout;
-  fillRegion(cells, regions.title, '─');
-  writeText(cells, 1, 0, `Smith ${state.workspace ?? 'workspace'} ${state.remote ?? ''}`.trim());
+  drawTitle(cells, regions.title, state);
   hitRegions.push(region('title', regions.title, 10, ['focus', 'menu']));
 
   if (regions.activity.width > 0) {
-    drawBox(cells, regions.activity, 'A');
-    writeVertical(cells, regions.activity.x + 1, regions.activity.y + 1, ['E', 'S', 'G', 'D', 'T', 'X']);
+    drawActivity(cells, regions.activity, state);
     hitRegions.push(region('activity', regions.activity, 10, ['click', 'wheel', 'context']));
   }
 
   if (regions.primarySideBar.width > 0) {
-    drawBox(cells, regions.primarySideBar, 'Explorer');
-    const explorerLines = state.explorerLines ?? ['▾ repo', '  ▾ src', '    app.ts ●'];
-    explorerLines.slice(0, Math.max(0, regions.primarySideBar.height - 2)).forEach((line, index) => {
-      writeText(cells, regions.primarySideBar.x + 1, regions.primarySideBar.y + 1 + index, line);
-    });
+    drawExplorer(cells, regions.primarySideBar, state);
     hitRegions.push(region('primarySideBar', regions.primarySideBar, 10, ['click', 'wheel', 'context']));
   }
 
-  drawBox(cells, regions.editor, `Editor: ${state.activeFile ?? 'app.ts'}`);
-  const editorLines = state.editorLines ?? ['1 function main() {', '2   return call();', '3 }'];
-  editorLines.slice(0, Math.max(0, regions.editor.height - 2)).forEach((line, index) => {
-    writeText(cells, regions.editor.x + 1, regions.editor.y + 1 + index, line);
-  });
+  drawEditor(cells, regions.editor, state);
   hitRegions.push(region('editor', regions.editor, 10, ['click', 'drag', 'wheel', 'context']));
 
   if (regions.secondarySideBar.width > 0) {
-    drawBox(cells, regions.secondarySideBar, 'Outline');
-    writeText(cells, regions.secondarySideBar.x + 1, regions.secondarySideBar.y + 1, 'main()');
+    drawAuxiliary(cells, regions.secondarySideBar, state);
     hitRegions.push(region('secondarySideBar', regions.secondarySideBar, 10, ['click', 'wheel']));
   }
 
   if (regions.panel.height > 0) {
-    drawBox(cells, regions.panel, 'Terminal');
-    const terminalLines = state.terminalLines ?? ['$ npm test'];
-    terminalLines.slice(0, Math.max(0, regions.panel.height - 2)).forEach((line, index) => {
-      writeText(cells, regions.panel.x + 1, regions.panel.y + 1 + index, line);
-    });
+    drawPanel(cells, regions.panel, state);
     hitRegions.push(region('panel', regions.panel, 10, ['click', 'drag', 'wheel', 'context']));
   }
 
-  fillRegion(cells, regions.status, ' ');
-  writeText(cells, 0, regions.status.y, `= ${state.remote ?? 'local'} ${state.branch ?? 'main'} ${state.connection ?? 'ready'} Ln 1, Col 1`);
+  drawMinibuffer(cells, regions.status.y - 1, width, state);
+  drawStatus(cells, regions.status, state);
   hitRegions.push(region('status', regions.status, 10, ['click']));
 
   if (layout.mode === 'narrow') {
-    const overlay = centered(width, height, 48, 10);
-    drawBox(cells, overlay, 'Command hint');
-    writeText(cells, overlay.x + 1, overlay.y + 1, 'Ctrl+P Quick Open');
-    writeText(cells, overlay.x + 1, overlay.y + 2, 'Ctrl+Shift+P Command Palette');
-    hitRegions.push(region('overlay.commandHint', overlay, 30, ['click', 'escape']));
+    const narrowHint = drawNarrowHint(cells, width, height);
+    hitRegions.push(region('overlay.commandHint', narrowHint, 30, ['click', 'escape']));
+  }
+
+  if (state.overlay) {
+    const overlay = centered(width, height, Math.min(72, width - 4), Math.min(12, height - 4));
+    drawBox(cells, overlay, state.overlay.title ?? 'Overlay', true);
+    const lines = state.overlay.lines ?? [];
+    lines.slice(0, overlay.height - 2).forEach((line, index) => {
+      writeText(cells, overlay.x + 2, overlay.y + 1 + index, truncate(line, overlay.width - 4));
+    });
+    hitRegions.push(region(`overlay.${state.overlay.kind ?? 'generic'}`, overlay, 30, ['click', 'escape']));
   }
 
   return frame(layout, cells, hitRegions);
@@ -76,6 +71,131 @@ export function routePointer(hitRegions, { x, y }) {
     .sort((a, b) => b.z - a.z)[0] ?? null;
 }
 
+function drawTitle(cells, area, state) {
+  fillRegion(cells, area, '─');
+  const dirty = state.dirty ? ' ●' : '';
+  const title = ` Smith ${state.remote ?? 'local'} ${state.connection ?? 'unknown'}  ${state.workspace ?? ''}  ${state.activeFile ?? 'No file'}${dirty} `;
+  writeText(cells, 1, area.y, truncate(title, area.width - 2));
+  if (area.height > 1) {
+    writeText(cells, 1, area.y + 1, truncate(` Focus: ${state.focus ?? 'editor'}   Help: ?   Commands: Ctrl+Shift+P   Quick open: Ctrl+P `, area.width - 2));
+  }
+}
+
+function drawActivity(cells, area, state) {
+  drawBox(cells, area, '');
+  const items = [
+    ['E', state.focus === 'explorer'],
+    ['S', false],
+    ['G', false],
+    ['T', state.focus === 'panel'],
+    ['?', Boolean(state.overlay)]
+  ];
+  items.forEach(([label, active], index) => {
+    writeText(cells, area.x + 1, area.y + 1 + index, active ? String(label) : String(label).toLowerCase());
+  });
+}
+
+function drawExplorer(cells, area, state) {
+  drawBox(cells, area, focusTitle('Explorer', state.focus === 'explorer'));
+  writeText(cells, area.x + 1, area.y + 1, truncate('Enter open/toggle  ? help', area.width - 2));
+  const rows = state.explorerRows ?? [];
+  rows.slice(0, Math.max(0, area.height - 3)).forEach((row, index) => {
+    const marker = row.selected ? '▸' : ' ';
+    const type = row.kind === 'directory' ? (row.expanded ? '▾' : '▸') : ' ';
+    const dirty = row.active && state.dirty ? ' ●' : row.active ? ' •' : '';
+    const indent = ' '.repeat(Math.min(8, row.depth * 2));
+    writeText(cells, area.x + 1, area.y + 2 + index, truncate(`${marker}${indent}${type} ${row.name}${dirty}`, area.width - 2));
+  });
+  if (rows.length === 0) {
+    writeText(cells, area.x + 1, area.y + 2, '<empty workspace>');
+  }
+}
+
+function drawEditor(cells, area, state) {
+  const title = focusTitle(`Editor: ${state.activeFile ?? 'No file'}${state.dirty ? ' ●' : ''}`, state.focus === 'editor');
+  drawBox(cells, area, title);
+  const lines = state.editorLines ?? [];
+  const visibleRows = Math.max(0, area.height - 3);
+  if (lines.length === 0) {
+    writeText(cells, area.x + 2, area.y + 2, 'No file open. Use Explorer or Ctrl+P.');
+  }
+  lines.slice(0, visibleRows).forEach((line, index) => {
+    const lineNumber = String(line.number).padStart(3, ' ');
+    const prefix = line.cursor && state.focus === 'editor' ? '>' : ' ';
+    const cursorText = line.cursor ? withCursor(line.text, line.cursorColumn ?? 0, state.mode) : line.text;
+    writeText(cells, area.x + 1, area.y + 1 + index, truncate(`${prefix}${lineNumber} ${cursorText}`, area.width - 2));
+  });
+  const footer = `${state.mode ?? 'NORMAL'}  ${state.dirty ? 'Unsaved changes' : 'Saved'}  Ctrl+S save  / search`;
+  writeText(cells, area.x + 1, area.y + area.height - 2, truncate(footer, area.width - 2));
+}
+
+function drawAuxiliary(cells, area, state) {
+  drawBox(cells, area, 'Problems');
+  const resultCount = state.searchResults?.length ?? 0;
+  writeText(cells, area.x + 1, area.y + 1, `Problems: 0`);
+  writeText(cells, area.x + 1, area.y + 2, `Search: ${resultCount}`);
+  writeText(cells, area.x + 1, area.y + 3, `Branch: ${state.branch ?? 'main'}`);
+}
+
+function drawPanel(cells, area, state) {
+  drawBox(cells, area, focusTitle('Panel', state.focus === 'panel'));
+  const terminal = state.terminal ?? {};
+  const searchResults = state.searchResults ?? [];
+  let lines = [];
+  if (state.focus === 'panel' && state.mode === 'TERMINAL') {
+    lines.push(`$ ${terminal.input ?? ''}`);
+  }
+  if (terminal.last) {
+    lines.push(`$ ${terminal.last.command}`);
+    lines.push(`exit ${terminal.last.status}`);
+    if (terminal.last.stdout) lines.push(...terminal.last.stdout.trimEnd().split(/\r?\n/u));
+    if (terminal.last.stderr) lines.push(...terminal.last.stderr.trimEnd().split(/\r?\n/u));
+  }
+  if (searchResults.length > 0) {
+    lines.push(`Search results (${searchResults.length})`);
+    lines.push(...searchResults.map((result) => `${result.relativePath}:${result.line}:${result.column} ${result.preview}`));
+  }
+  if (lines.length === 0) {
+    lines = ['Terminal: Ctrl+` then type command', 'Search: / or Ctrl+Shift+F'];
+  }
+  lines.slice(0, Math.max(0, area.height - 2)).forEach((line, index) => {
+    writeText(cells, area.x + 1, area.y + 1 + index, truncate(line, area.width - 2));
+  });
+}
+
+function drawMinibuffer(cells, y, width, state) {
+  if (y < 0) return;
+  fillRegion(cells, rect(0, y, width, 1), ' ');
+  const minibuffer = state.minibuffer ?? {};
+  const prompt = minibuffer.prompt ? `${minibuffer.prompt} ${minibuffer.input ?? ''}` : minibuffer.message ?? '';
+  writeText(cells, 0, y, truncate(prompt, width));
+}
+
+function drawStatus(cells, area, state) {
+  fillRegion(cells, area, ' ');
+  const dirty = state.dirty ? '●' : '✓';
+  const status = `${state.mode ?? 'NORMAL'}  SSH ${state.connection ?? 'unknown'}  ${state.branch ?? 'main'}  ${state.activeFile ?? 'No file'} ${dirty}  Ln ${state.cursorLine ?? 1} Col ${state.cursorColumn ?? 1}  Problems 0  ? Help`;
+  writeText(cells, 0, area.y, truncate(status, area.width));
+}
+
+function drawNarrowHint(cells, width, height) {
+  const overlay = centered(width, height, 48, 6);
+  drawBox(cells, overlay, 'Narrow layout', true);
+  writeText(cells, overlay.x + 1, overlay.y + 1, 'Explorer/Search/Terminal open as overlays.');
+  writeText(cells, overlay.x + 1, overlay.y + 2, 'Editor state is preserved.');
+  return overlay;
+}
+
+function withCursor(text, column, mode) {
+  const safeColumn = Math.min(Math.max(0, column), text.length);
+  const marker = mode === 'INSERT' ? '▏' : '█';
+  return `${text.slice(0, safeColumn)}${marker}${text.slice(safeColumn)}`;
+}
+
+function focusTitle(title, focused) {
+  return focused ? `▌ ${title}` : title;
+}
+
 function frame(layout, cells, hitRegions) {
   return {
     layout,
@@ -85,23 +205,26 @@ function frame(layout, cells, hitRegions) {
   };
 }
 
-function drawBox(cells, area, title) {
+function drawBox(cells, area, title, heavy = false) {
   if (area.width <= 0 || area.height <= 0) return;
+  const chars = heavy
+    ? { horizontal: '━', vertical: '┃', topLeft: '┏', topRight: '┓', bottomLeft: '┗', bottomRight: '┛' }
+    : { horizontal: '─', vertical: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘' };
   const right = area.x + area.width - 1;
   const bottom = area.y + area.height - 1;
   for (let x = area.x; x <= right; x++) {
-    setCell(cells, x, area.y, '─');
-    setCell(cells, x, bottom, '─');
+    setCell(cells, x, area.y, chars.horizontal);
+    setCell(cells, x, bottom, chars.horizontal);
   }
   for (let y = area.y; y <= bottom; y++) {
-    setCell(cells, area.x, y, '│');
-    setCell(cells, right, y, '│');
+    setCell(cells, area.x, y, chars.vertical);
+    setCell(cells, right, y, chars.vertical);
   }
-  setCell(cells, area.x, area.y, '┌');
-  setCell(cells, right, area.y, '┐');
-  setCell(cells, area.x, bottom, '└');
-  setCell(cells, right, bottom, '┘');
-  writeText(cells, area.x + 1, area.y, ` ${title} `);
+  setCell(cells, area.x, area.y, chars.topLeft);
+  setCell(cells, right, area.y, chars.topRight);
+  setCell(cells, area.x, bottom, chars.bottomLeft);
+  setCell(cells, right, bottom, chars.bottomRight);
+  if (title) writeText(cells, area.x + 1, area.y, ` ${truncate(title, Math.max(0, area.width - 4))} `);
 }
 
 function fillRegion(cells, area, char) {
@@ -113,13 +236,10 @@ function fillRegion(cells, area, char) {
 }
 
 function writeText(cells, x, y, text) {
-  for (let index = 0; index < text.length; index++) {
-    setCell(cells, x + index, y, text[index]);
+  const safeText = String(text ?? '');
+  for (let index = 0; index < safeText.length; index++) {
+    setCell(cells, x + index, y, safeText[index]);
   }
-}
-
-function writeVertical(cells, x, y, lines) {
-  lines.forEach((line, index) => writeText(cells, x, y + index, line));
 }
 
 function setCell(cells, x, y, char) {
@@ -145,4 +265,11 @@ function centered(width, height, preferredWidth, preferredHeight) {
     width: overlayWidth,
     height: overlayHeight
   };
+}
+
+function truncate(value, width) {
+  const text = String(value ?? '');
+  if (width <= 0) return '';
+  if (text.length <= width) return text;
+  return `${text.slice(0, Math.max(0, width - 1))}…`;
 }

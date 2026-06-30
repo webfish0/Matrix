@@ -83,6 +83,43 @@ await test('PMVP-002', 'supplied-target initialization does not overwrite worksp
   });
 });
 
+await test('PMVP-003', 'persistent remote terminal preserves shell state, status and size', async () => {
+  await withSshFixture(async ({ target, workspace }) => {
+    const client = new SshWorkspaceClient(target);
+    await client.ensureWorkspace(workspaceFile(workspace, 'src'));
+    const terminal = await client.openTerminal(workspace, { width: 80, height: 20, outputLimit: 1024 });
+    try {
+      const initial = await terminal.runCommand('pwd');
+      assert(initial.status === 0 && initial.stdout.includes(workspace), 'persistent terminal must start in remote workspace');
+
+      const change = await terminal.runCommand('cd src');
+      assert(change.status === 0, 'cd should succeed in persistent shell');
+      const afterChange = await terminal.runCommand('pwd');
+      assert(afterChange.stdout.includes(`${workspace}/src`), 'cwd change must persist across commands');
+
+      const failure = await terminal.runCommand('false');
+      assert(failure.status !== 0, 'non-zero remote command status must be reported');
+
+      const [firstQueued, secondQueued] = await Promise.all([
+        terminal.runCommand('printf first'),
+        terminal.runCommand('printf second')
+      ]);
+      assert(firstQueued.stdout.includes('first') && secondQueued.stdout.includes('second'), 'concurrent requests should execute through a serialized command queue');
+
+      const bounded = await terminal.runCommand("yes x | head -c 4096");
+      assert(bounded.stdout.length <= 1024, 'remote terminal command capture must respect output bound');
+
+      await terminal.resize({ width: 91, height: 27 });
+      const size = await terminal.runCommand('stty size');
+      assert(size.stdout.includes('27 91'), 'remote PTY should receive requested row and column size');
+      assert(terminal.snapshot().length === 27, 'terminal screen model should resize with remote PTY');
+    } finally {
+      await terminal.close();
+    }
+    assert(terminal.closed, 'closing Smith terminal should close persistent SSH process');
+  });
+});
+
 const failed = results.filter((result) => result.status !== 'passed');
 await mkdir('test-evidence/product-mvp/junit', { recursive: true });
 await writeJson('test-evidence/product-mvp/results.json', {

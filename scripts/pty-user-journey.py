@@ -100,17 +100,19 @@ class PtyJourney:
         observes: str,
         action: str,
         payload: bytes,
-        expected: str,
+        expected: str | list[str],
     ) -> None:
         start = len(self.output)
         self.write(payload)
-        self.wait_for(expected, after=start)
+        expected_values = [expected] if isinstance(expected, str) else expected
+        for expected_text in expected_values:
+            self.wait_for(expected_text, after=start)
         self.steps.append(
             {
                 "goal": goal,
                 "observes": observes,
                 "action": action,
-                "result": f'saw "{expected}"',
+                "result": f"saw {expected_values}",
                 "rawBytesHex": payload.hex(),
             }
         )
@@ -287,6 +289,48 @@ def run() -> dict[str, object]:
         journey.act(
             goal="run a command in the remote workspace",
             observes="$ /bin/echo pty-terminal",
+            action="press Enter",
+            payload=b"\r",
+            expected="exit 0",
+        )
+        journey.act(
+            goal="change directory inside the persistent remote shell",
+            observes="exit 0 from the first command",
+            action="type cd src",
+            payload=b"cd src",
+            expected="$ cd src",
+        )
+        journey.act(
+            goal="apply the shell state change",
+            observes="$ cd src",
+            action="press Enter",
+            payload=b"\r",
+            expected="exit 0",
+        )
+        journey.act(
+            goal="check that shell state persists for the next command",
+            observes="persistent terminal remains focused",
+            action="type pwd",
+            payload=b"pwd",
+            expected="$ pwd",
+        )
+        journey.act(
+            goal="prove cwd persisted across commands",
+            observes="$ pwd",
+            action="press Enter",
+            payload=b"\r",
+            expected=["/src", "exit 0"],
+        )
+        journey.act(
+            goal="return the persistent shell to workspace root",
+            observes="pwd output ends in /src",
+            action="type cd ..",
+            payload=b"cd ..",
+            expected="$ cd ..",
+        )
+        journey.act(
+            goal="apply workspace-root recovery",
+            observes="$ cd ..",
             action="press Enter",
             payload=b"\r",
             expected="exit 0",
@@ -601,6 +645,13 @@ def run_signal_restoration(signal_name: str) -> dict[str, object]:
     try:
         journey.start()
         journey.wait_for("Editor: src/app.ts")
+        if signal_name == "SIGTERM":
+            journey.write(b"\x1bOQ")
+            journey.wait_for("TERMINAL")
+            journey.write(b"/bin/echo signal-terminal")
+            journey.wait_for("$ /bin/echo signal-terminal")
+            journey.write(b"\r")
+            journey.wait_for("exit 0")
         assert journey.pid is not None
         os.kill(journey.pid, getattr(signal, signal_name))
         exit_code = journey.wait_for_exit()

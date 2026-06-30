@@ -265,6 +265,7 @@ await test('USER-MVP-001', 'user completes IDE tasks by reading terminal feedbac
     assert(deletedFileMissing, 'confirmed delete must remove renamed remote file');
     assert(!transcript.includes('│E│'), 'default MVP UI must not show the unclear activity rail');
     assert(session.quitRequested, 'session must quit through user workflow');
+    await session.dispose();
   });
 });
 

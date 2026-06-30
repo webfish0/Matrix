@@ -26,6 +26,7 @@ The black-box PTY journey covers:
 - F1, F2, `:`, Ctrl+P, Ctrl+S, Escape, Enter, printable input, and SGR mouse bytes through Node’s real terminal decoder;
 - command filtering, shortcuts, execution, and disabled-command explanations;
 - SSH workspace browse, edit, save, workspace search, selected-result navigation, and remote command execution;
+- persistent remote shell cwd across commands, serialized command requests, non-zero status, bounded output, PTY resize, and process closure;
 - permission-denied save, preserved dirty state, permission recovery, retry, dirty-exit cancellation, and final save;
 - real PTY resize through narrow, minimum, and recovered layouts;
 - alternate-screen, mouse, cursor, raw-input lifecycle, process exit, normal restoration, and SIGHUP/SIGINT/SIGTERM restoration sequences;

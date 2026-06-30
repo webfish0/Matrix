@@ -318,6 +318,8 @@ Acceptance:
 - terminal opens from shortcut;
 - command runs on remote host;
 - working directory and exit status are visible;
+- shell working-directory changes persist across subsequent commands;
+- terminal resize reaches the remote PTY;
 - terminal mode escape is visible and tested.
 
 ### US-MVP-006 Discover commands

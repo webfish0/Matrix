@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname, posix } from 'node:path';
+import { SshTerminalSession } from './ssh-terminal.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -102,6 +103,25 @@ export class SshWorkspaceClient {
       ...args
     ]);
     return { command: [command, ...args].join(' '), ...JSON.parse(output) };
+  }
+
+  async openTerminal(workspace, { width = 80, height = 24, outputLimit } = {}) {
+    const terminal = new SshTerminalSession({
+      target: {
+        host: this.host,
+        port: this.port,
+        user: this.user,
+        identityFile: this.identityFile,
+        knownHostsFile: this.knownHostsFile,
+        extraOptions: this.extraOptions
+      },
+      workspace,
+      width,
+      height,
+      ...(outputLimit ? { outputLimit } : {})
+    });
+    await terminal.start();
+    return terminal;
   }
 }
 

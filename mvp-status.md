@@ -77,6 +77,7 @@ The existing verification confirms:
 | Edit and save remote file | Remote `src/app.ts` is modified and read back over SSH. |
 | Search remote workspace | Remote text search finds the edited content. |
 | Run remote terminal command | Remote `/bin/echo terminal-ok` executes over SSH. |
+| Persistent remote terminal | A forced OpenSSH PTY starts in the workspace, preserves `cd` state across commands, reports non-zero status, applies resize, bounds output, and closes with Smith. |
 | Render terminal workbench | Workbench frame with Explorer/editor/panel/status/minibuffer/status line is captured under `test-evidence/product-mvp/frames/`. |
 | Screen-oriented manual flow | `npm run smith -- ide-demo` opens a full-screen terminal workbench. |
 | End-user workflow evidence | `USER-MVP-001` drives the terminal from a user perspective: each step observes visible screen feedback, performs the visible action, and checks the next user-visible result for help, command palette, mouse click, Explorer, Insert mode, save, create, rename, delete-cancel, delete-confirm, search, terminal, resize, dirty-exit cancellation, and quit. |
@@ -142,7 +143,7 @@ These gaps should be closed or explicitly accepted before closing the Product MV
 - live user acceptance on a real terminal, not only scripted evidence;
 - broader terminal compatibility testing for mouse/key sequences;
 - fuller quick-open result picker instead of simple substring open;
-- true persistent PTY/multiplexing for long-running terminal commands;
+- PTY reconnection/multiplexing, direct arbitrary child-TUI keystreams, selection, and copy/paste;
 - final issue/project status reconciliation.
 
 These remain post-MVP unless explicitly pulled forward:

@@ -37,6 +37,8 @@ export class IdeSession {
     this.lastSearch = [];
     this.selectedSearchIndex = 0;
     this.lastTerminal = null;
+    this.terminalSession = null;
+    this.terminalRunning = false;
     this.terminalInput = '';
     this.minibuffer = { kind: 'message', prompt: '', input: '', message: '' };
     this.overlay = null;
@@ -92,7 +94,16 @@ export class IdeSession {
     };
     const onResize = () => {
       try {
-        this.renderToTerminal();
+        const frame = this.renderToTerminal();
+        const panel = frame.layout.regions.panel;
+        if (this.terminalSession && panel?.width > 2 && panel?.height > 2) {
+          void this.terminalSession.resize({
+            width: panel.width - 2,
+            height: panel.height - 2
+          }).catch((error) => {
+            this.setMessage(friendlyError(error));
+          });
+        }
       } catch (error) {
         fail(error);
       }
@@ -155,7 +166,11 @@ export class IdeSession {
       if (fatalError) throw fatalError;
     } finally {
       cleanup();
-      lifecycle.restore();
+      try {
+        await this.dispose();
+      } finally {
+        lifecycle.restore();
+      }
     }
   }
 
@@ -679,8 +694,36 @@ export class IdeSession {
   async runTerminalLine(line) {
     const [command, ...args] = splitCommand(line);
     if (!command) return;
-    this.lastTerminal = await this.client.runTerminalCommand(command, args, { cwd: this.workspace });
+    if (typeof this.client.openTerminal === 'function') {
+      if (!this.terminalSession) {
+        const panel = this.renderFrame().layout.regions.panel;
+        this.terminalSession = await this.client.openTerminal(this.workspace, {
+          width: Math.max(20, panel.width - 2),
+          height: Math.max(3, panel.height - 2)
+        });
+        this.terminalSession.on('output', () => {
+          if (this.mode === 'terminal' && !this.quitRequested && this.output.isTTY) {
+            this.renderToTerminal();
+          }
+        });
+      }
+      this.terminalRunning = true;
+      try {
+        this.lastTerminal = await this.terminalSession.runCommand(line);
+      } finally {
+        this.terminalRunning = false;
+      }
+    } else {
+      this.lastTerminal = await this.client.runTerminalCommand(command, args, { cwd: this.workspace });
+    }
     this.setMessage(`Command exited ${this.lastTerminal.status}.`);
+  }
+
+  async dispose() {
+    if (!this.terminalSession) return;
+    const terminal = this.terminalSession;
+    this.terminalSession = null;
+    await terminal.close();
   }
 
   openCommandPalette() {
@@ -954,7 +997,9 @@ export class IdeSession {
       terminal: {
         input: this.terminalInput,
         last: this.lastTerminal,
-        cwd: this.workspace
+        cwd: this.workspace,
+        screenRows: this.terminalSession?.snapshot() ?? [],
+        running: this.terminalRunning
       }
     };
   }
@@ -962,6 +1007,7 @@ export class IdeSession {
   renderToTerminal() {
     const frame = this.renderFrame();
     this.output.write(`\x1b[H${frame.text}`);
+    return frame;
   }
 
   renderSnapshot(label, { width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, captureFrames = true } = {}) {

@@ -151,6 +151,8 @@ function drawPanel(cells, area, state) {
   if (showingSearch) {
     lines.push(`Search results (${searchResults.length})  ↑/↓ select  Enter open`);
     lines.push(...searchResults.map((result, index) => `${index === (state.selectedSearchIndex ?? 0) ? '▸' : ' '} ${result.relativePath}:${result.line}:${result.column} ${result.preview}`));
+  } else if (terminal.running && terminal.screenRows?.length > 0) {
+    lines.push(...terminal.screenRows.filter((line) => line.trim()).slice(-Math.max(1, area.height - 2)));
   } else if (state.focus === 'panel' && state.mode === 'TERMINAL' && (!terminal.last || terminal.input)) {
     lines.push(`$ ${terminal.input ?? ''}  [cwd ${terminal.cwd ?? state.workspace ?? ''}]`);
   } else if (terminal.last) {

@@ -303,6 +303,8 @@ The current implementation has SSH, workspace, render, deterministic user-journe
 
 **Acceptance:** T-012 and terminal portions of T-020/T-022 pass.
 
+**Current evidence:** A persistent forced OpenSSH PTY starts in the workspace, preserves shell cwd across commands, serializes command requests, reports status, bounds captured output and scrollback, applies remote `stty` resize, and closes on Smith exit. Arbitrary child-TUI keystreams, selection/copy/paste, reconnect/multiplexing, and the Code OSS PTY channel remain open.
+
 ### SMITH-020 Implement Source Control and task presentations
 
 **Outcome:** Developers can inspect changes and run build workflows.

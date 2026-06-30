@@ -19,6 +19,7 @@ const checks = [
   check('T-007', 'component-editor', 'test-evidence/mvp-3-remote-editing/results.json'),
   check('PMVP-001', 'integration-ssh', 'test-evidence/product-mvp/results.json'),
   check('PMVP-002', 'integration-ssh', 'test-evidence/product-mvp/results.json'),
+  check('PMVP-003', 'integration-ssh', 'test-evidence/product-mvp/results.json'),
   check('USER-MVP-001', 'simulated-user-journey', 'test-evidence/manual-product-mvp/results.json'),
   check('USER-PTY-001', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json'),
   check('T-005-sighup', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json'),
@@ -31,7 +32,7 @@ const stories = [
   story('US-MVP-002', 'Browse remote files', ['T-011', 'USER-MVP-001', 'USER-PTY-001']),
   story('US-MVP-003', 'Edit, save and recover from save failure', ['T-007', 'PMVP-001', 'USER-PTY-001']),
   story('US-MVP-004', 'Search and navigate to a result', ['T-010-search-navigation', 'PMVP-001', 'USER-PTY-001']),
-  story('US-MVP-005', 'Run a remote command in workspace context', ['PMVP-001', 'USER-PTY-001']),
+  story('US-MVP-005', 'Run a persistent remote command session in workspace context', ['PMVP-003', 'USER-PTY-001']),
   story('US-MVP-006', 'Discover commands and disabled reasons', ['T-010-palette', 'USER-PTY-001']),
   story('US-MVP-007', 'Resize safely', ['T-009', 'USER-PTY-001']),
   story('US-MVP-008', 'Exit without data loss and restore terminal', [

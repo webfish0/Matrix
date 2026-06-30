@@ -4,6 +4,13 @@ import { normalizeTerminalKey, resolveKeybinding } from '../src/tui/commands.mjs
 import { computeLayout } from '../src/tui/layout.mjs';
 import { renderWorkbench, routePointer } from '../src/tui/render.mjs';
 import { TerminalScreen } from '../src/tui/terminal-screen.mjs';
+import {
+  signalExitCode,
+  terminalCapabilities,
+  TerminalLifecycle,
+  TERMINAL_ENTER_SEQUENCE,
+  TERMINAL_RESTORE_SEQUENCE
+} from '../src/tui/terminal-lifecycle.mjs';
 import { IdeSession } from '../src/ide/session.mjs';
 import { writeJson } from './lib.mjs';
 
@@ -52,6 +59,73 @@ await test('T-008', 'workbench renders deterministic frames across responsive mo
   assert(minimum.text.includes('Smith needs more space'), 'minimum frame must show resize message');
   assert(medium.layout.regions.activity.width === 0, 'activity rail must be hidden until it has useful MVP behavior');
   assert(!medium.hitRegions.some((region) => region.id === 'activity'), 'activity rail hit region must not exist when hidden');
+});
+
+await test('T-005-unit', 'terminal lifecycle enters and restores modes exactly once', async () => {
+  const rawModes = [];
+  const writes = [];
+  let resumed = 0;
+  let paused = 0;
+  const lifecycle = new TerminalLifecycle({
+    input: {
+      setRawMode: (enabled) => rawModes.push(enabled),
+      resume: () => { resumed += 1; },
+      pause: () => { paused += 1; }
+    },
+    output: {
+      write: (text) => writes.push(text)
+    }
+  });
+  assert(lifecycle.enter() === true && lifecycle.enter() === false, 'terminal entry should be idempotent');
+  assert(lifecycle.restore() === true && lifecycle.restore() === false, 'terminal restoration should be idempotent');
+  assert(JSON.stringify(rawModes) === JSON.stringify([true, false]), 'raw mode should be enabled and disabled once');
+  assert(resumed === 1 && paused === 1, 'input should resume on entry and pause on restoration');
+  assert(writes[0] === TERMINAL_ENTER_SEQUENCE && writes[1] === TERMINAL_RESTORE_SEQUENCE, 'terminal mode sequences should be paired');
+  assert(signalExitCode('SIGINT') === 130 && signalExitCode('SIGTERM') === 143, 'signal exit codes should follow shell convention');
+});
+
+await test('T-005-startup-failure', 'terminal lifecycle restores raw mode when startup output fails', async () => {
+  const rawModes = [];
+  let writeCount = 0;
+  const lifecycle = new TerminalLifecycle({
+    input: {
+      setRawMode: (enabled) => rawModes.push(enabled),
+      resume() {},
+      pause() {}
+    },
+    output: {
+      write() {
+        writeCount += 1;
+        if (writeCount === 1) throw new Error('injected terminal startup failure');
+      }
+    }
+  });
+  let failed = false;
+  try {
+    lifecycle.enter();
+  } catch {
+    failed = true;
+  } finally {
+    lifecycle.restore();
+  }
+  assert(failed, 'startup failure should propagate');
+  assert(JSON.stringify(rawModes) === JSON.stringify([true, false]), 'startup failure must still disable raw mode');
+  assert(writeCount === 2, 'restoration sequence should be attempted after failed entry');
+});
+
+await test('T-005-capabilities', 'terminal diagnostics choose interactive and conservative profiles', async () => {
+  const interactive = terminalCapabilities({
+    input: { isTTY: true },
+    output: { isTTY: true },
+    env: { TERM: 'xterm-256color', COLORTERM: 'truecolor', LANG: 'en_GB.UTF-8' }
+  });
+  const conservative = terminalCapabilities({
+    input: { isTTY: false },
+    output: { isTTY: false },
+    env: { TERM: 'dumb', LANG: 'C' }
+  });
+  assert(interactive.profile === 'interactive' && interactive.color === 'truecolor' && interactive.sgrMouse, 'interactive profile should expose supported capabilities');
+  assert(conservative.profile === 'conservative' && !conservative.sgrMouse && !conservative.alternateScreen, 'non-TTY profile should disable unsafe capabilities');
 });
 
 await test('T-009', 'resize layout preserves editor and rebuilds hit regions', async () => {

@@ -585,6 +585,56 @@ def strip_terminal_controls(raw: bytes) -> str:
     return "".join(char for char in text if char == "\n" or ord(char) >= 32)
 
 
+def signal_evidence_paths(signal_name: str) -> tuple[Path, Path, Path]:
+    suffix = signal_name.lower()
+    return (
+        EVIDENCE / f"signal-{suffix}-transcript.ansi",
+        EVIDENCE / f"signal-{suffix}-transcript.txt",
+        EVIDENCE / f"signal-{suffix}-result.json",
+    )
+
+
+def run_signal_restoration(signal_name: str) -> dict[str, object]:
+    journey = PtyJourney()
+    raw_path, text_path, _ = signal_evidence_paths(signal_name)
+    expected_exit = {"SIGHUP": 129, "SIGINT": 130, "SIGTERM": 143}[signal_name]
+    try:
+        journey.start()
+        journey.wait_for("Editor: src/app.ts")
+        assert journey.pid is not None
+        os.kill(journey.pid, getattr(signal, signal_name))
+        exit_code = journey.wait_for_exit()
+        if exit_code != expected_exit:
+            raise AssertionError(
+                f"{signal_name} should produce exit status {expected_exit}, got {exit_code}"
+            )
+        for sequence in ENTER_MODES:
+            if sequence not in journey.output:
+                raise AssertionError(f"Missing terminal mode entry sequence {sequence!r}")
+        for sequence in RESTORE_MODES:
+            if sequence not in journey.output:
+                raise AssertionError(f"Missing terminal restoration sequence after SIGTERM {sequence!r}")
+        return {
+            "status": "passed",
+            "durationMs": round((time.monotonic() - journey.started_at) * 1000),
+            "signal": signal_name,
+            "exitCode": exit_code,
+            "terminalModesEntered": [sequence.hex() for sequence in ENTER_MODES],
+            "terminalModesRestored": [sequence.hex() for sequence in RESTORE_MODES],
+            "output": bytes(journey.output),
+        }
+    except Exception:
+        EVIDENCE.mkdir(parents=True, exist_ok=True)
+        raw_path.write_bytes(bytes(journey.output))
+        text_path.write_text(
+            strip_terminal_controls(bytes(journey.output)),
+            encoding="utf-8",
+        )
+        raise
+    finally:
+        journey.stop()
+
+
 def write_evidence(result: dict[str, object]) -> None:
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     output = result.pop("output")
@@ -618,7 +668,20 @@ def write_evidence(result: dict[str, object]) -> None:
 
 
 def main() -> int:
+    signal_mode = len(sys.argv) > 1 and sys.argv[1] == "signal"
+    signal_name = sys.argv[2] if len(sys.argv) > 2 else "SIGTERM"
     try:
+        if signal_mode:
+            raw_path, text_path, result_path = signal_evidence_paths(signal_name)
+            result = run_signal_restoration(signal_name)
+            output = result.pop("output")
+            assert isinstance(output, bytes)
+            EVIDENCE.mkdir(parents=True, exist_ok=True)
+            raw_path.write_bytes(output)
+            text_path.write_text(strip_terminal_controls(output), encoding="utf-8")
+            result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+            print(f"PASS T-005-{signal_name.lower()} {signal_name} restores terminal")
+            return 0
         result = run()
         result["environment"] = {
             "platform": platform.platform(),
@@ -631,7 +694,8 @@ def main() -> int:
         return 0
     except Exception as error:
         EVIDENCE.mkdir(parents=True, exist_ok=True)
-        RESULT.write_text(
+        result_path = signal_evidence_paths(signal_name)[2] if signal_mode else RESULT
+        result_path.write_text(
             json.dumps(
                 {
                     "status": "failed",
@@ -647,7 +711,8 @@ def main() -> int:
             + "\n",
             encoding="utf-8",
         )
-        print(f"FAIL USER-PTY-001 {error}", file=sys.stderr)
+        test_id = f"T-005-{signal_name.lower()}" if signal_mode else "USER-PTY-001"
+        print(f"FAIL {test_id} {error}", file=sys.stderr)
         return 1
 
 

@@ -7,6 +7,7 @@ import { SshWorkspaceClient } from '../src/remote/ssh-workspace.mjs';
 import { IdeSession } from '../src/ide/session.mjs';
 import { withSshFixture } from './ssh-fixture.mjs';
 import { parseOptions, requireOption } from '../src/cli/options.mjs';
+import { terminalCapabilities } from '../src/tui/terminal-lifecycle.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -57,11 +58,17 @@ try {
     const session = new IdeSession({ client, workspace, remoteLabel: `ssh:${host}` });
     await session.initialize({ seedDemo: false });
     await session.runInteractive();
+  } else if (command === 'terminal-doctor') {
+    console.log(stableJson(terminalCapabilities({
+      input: process.stdin,
+      output: process.stdout
+    })));
   } else {
     console.error('Usage: npm run smith -- connect-plan <ssh-host> [workspace]');
     console.error('       npm run smith -- handshake-check');
     console.error('       npm run smith -- ide-demo');
     console.error('       npm run smith -- ide --host <host> --workspace <path> --identity <key> [--port 22] [--user user]');
+    console.error('       npm run smith -- terminal-doctor');
     process.exitCode = 2;
   }
 } catch (error) {

@@ -5,6 +5,9 @@ const checks = [
   check('T-002', 'integration-ssh', 'test-evidence/mvp-1-remote-spine/results.json'),
   check('T-003', 'integration-ssh', 'test-evidence/mvp-1-remote-spine/results.json'),
   check('T-005-startup-smoke', 'component-terminal', 'test-evidence/mvp-1-remote-spine/results.json'),
+  check('T-005-unit', 'component-terminal', 'test-evidence/mvp-2-terminal-workbench/results.json'),
+  check('T-005-startup-failure', 'component-terminal', 'test-evidence/mvp-2-terminal-workbench/results.json'),
+  check('T-005-capabilities', 'component-terminal', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-008', 'component-render', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-009', 'component-render', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-010-keypress', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
@@ -17,7 +20,10 @@ const checks = [
   check('PMVP-001', 'integration-ssh', 'test-evidence/product-mvp/results.json'),
   check('PMVP-002', 'integration-ssh', 'test-evidence/product-mvp/results.json'),
   check('USER-MVP-001', 'simulated-user-journey', 'test-evidence/manual-product-mvp/results.json'),
-  check('USER-PTY-001', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json')
+  check('USER-PTY-001', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json'),
+  check('T-005-sighup', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json'),
+  check('T-005-sigint', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json'),
+  check('T-005-sigterm', 'black-box-pty', 'test-evidence/pty-product-mvp/results.json')
 ];
 
 const stories = [
@@ -28,13 +34,23 @@ const stories = [
   story('US-MVP-005', 'Run a remote command in workspace context', ['PMVP-001', 'USER-PTY-001']),
   story('US-MVP-006', 'Discover commands and disabled reasons', ['T-010-palette', 'USER-PTY-001']),
   story('US-MVP-007', 'Resize safely', ['T-009', 'USER-PTY-001']),
-  story('US-MVP-008', 'Exit without data loss and restore terminal', ['T-005-startup-smoke', 'USER-MVP-001', 'USER-PTY-001'])
+  story('US-MVP-008', 'Exit without data loss and restore terminal', [
+    'T-005-startup-failure',
+    'T-005-sighup',
+    'T-005-sigint',
+    'T-005-sigterm',
+    'USER-MVP-001',
+    'USER-PTY-001'
+  ])
 ];
 
 const requiredArtifacts = [
   'test-evidence/pty-product-mvp/transcript.ansi',
   'test-evidence/pty-product-mvp/transcript.txt',
   'test-evidence/pty-product-mvp/user-journey.json',
+  'test-evidence/pty-product-mvp/signal-sighup-transcript.ansi',
+  'test-evidence/pty-product-mvp/signal-sigint-transcript.ansi',
+  'test-evidence/pty-product-mvp/signal-sigterm-transcript.ansi',
   'test-evidence/pty-product-mvp/screenshots/frames/initial.png',
   'test-evidence/pty-product-mvp/screenshots/frames/command-palette.png',
   'test-evidence/pty-product-mvp/screenshots/frames/remote-terminal.png',

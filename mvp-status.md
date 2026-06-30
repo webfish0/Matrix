@@ -57,6 +57,14 @@ F2             integrated remote terminal
 q              quit; dirty buffers require confirmation
 ```
 
+Terminal diagnostics:
+
+```bash
+npm run smith -- terminal-doctor
+```
+
+This reports the selected conservative or interactive capability profile without changing terminal modes.
+
 ## Confirmed usable vertical slice
 
 The existing verification confirms:
@@ -76,6 +84,8 @@ The existing verification confirms:
 | Save-failure recovery | The PTY journey makes the remote file read-only, proves permission-denied feedback and preserved dirty state, repairs permission, and retries save. |
 | Search navigation | Search results are keyboard selectable and Enter opens the selected remote file at its matching line and column. |
 | Terminal lifecycle | The PTY journey verifies alternate-screen/mouse/cursor entry, normal process exit, and all matching restoration sequences. |
+| Signal restoration | Real PTY tests send SIGHUP, SIGINT, and SIGTERM, then verify conventional exit status and restoration of mouse, cursor, and alternate-screen modes. |
+| Startup recovery | Injected startup-output failure proves raw mode is disabled and restoration is attempted. |
 | Requirement traceability | The evidence gate checks every prioritized MVP story for lower-level and black-box evidence and verifies required artifacts exist. |
 
 Existing evidence:

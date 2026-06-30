@@ -177,6 +177,8 @@ The current implementation has SSH, workspace, render, deterministic user-journe
 
 **Acceptance:** T-005 passes on the terminal matrix.
 
+**Current evidence:** Unit and real-PTY tests cover idempotent entry/restoration, injected startup failure, normal exit, SIGHUP, SIGINT, SIGTERM, and capability-profile diagnostics. Cross-terminal compatibility and panic/exception matrix coverage remain open.
+
 ### SMITH-011 Build cell renderer, diff output and invalidation scheduler
 
 **Outcome:** Workbench components render efficiently without a polling loop.

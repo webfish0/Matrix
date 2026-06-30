@@ -4,6 +4,7 @@ import { posix } from 'node:path';
 import { workspaceFile } from '../remote/ssh-workspace.mjs';
 import { renderWorkbench } from '../tui/render.mjs';
 import { normalizeTerminalKey } from '../tui/commands.mjs';
+import { signalExitCode, TerminalLifecycle } from '../tui/terminal-lifecycle.mjs';
 
 const DEFAULT_WIDTH = 100;
 const DEFAULT_HEIGHT = 30;
@@ -14,13 +15,15 @@ export class IdeSession {
     workspace,
     remoteLabel = 'ssh:fixture',
     inputReader = processInput,
-    outputWriter = processOutput
+    outputWriter = processOutput,
+    signalSource = process
   }) {
     this.client = client;
     this.workspace = workspace;
     this.remoteLabel = remoteLabel;
     this.input = inputReader;
     this.output = outputWriter;
+    this.signalSource = signalSource;
     this.connection = 'connecting';
     this.mode = 'normal';
     this.focus = 'explorer';
@@ -71,46 +74,89 @@ export class IdeSession {
     }
 
     readline.emitKeypressEvents(this.input);
-    this.input.setRawMode(true);
-    this.output.write('\x1b[?1049h\x1b[?1000h\x1b[?1006h\x1b[?25l');
-    this.renderToTerminal();
-
-    await new Promise((resolve) => {
-      const onResize = () => this.renderToTerminal();
-      const onData = async (chunk) => {
+    const lifecycle = new TerminalLifecycle({ input: this.input, output: this.output });
+    let complete;
+    let closing = false;
+    let fatalError = null;
+    const completion = new Promise((resolve) => {
+      complete = resolve;
+    });
+    const finish = () => {
+      if (closing) return;
+      closing = true;
+      complete();
+    };
+    const fail = (error) => {
+      fatalError = error;
+      finish();
+    };
+    const onResize = () => {
+      try {
+        this.renderToTerminal();
+      } catch (error) {
+        fail(error);
+      }
+    };
+    const onData = async (chunk) => {
+      try {
         const handled = await this.handleRawInput(chunk.toString('utf8'));
-        if (handled) {
+        if (handled && !closing) {
           this.renderToTerminal();
         }
-      };
-      const onKeypress = async (str, key) => {
-        try {
-          if (this.shouldSuppressKeypress(str, key)) {
-            return;
-          }
-          await this.handleKey(key, str);
-          this.renderToTerminal();
-          if (this.quitRequested) {
-            cleanup();
-            resolve();
-          }
-        } catch (error) {
-          this.setMessage(friendlyError(error));
-          this.renderToTerminal();
+      } catch (error) {
+        this.setMessage(friendlyError(error));
+        if (!closing) this.renderToTerminal();
+      }
+    };
+    const onKeypress = async (str, key) => {
+      try {
+        if (closing || this.shouldSuppressKeypress(str, key)) {
+          return;
         }
-      };
-      const cleanup = () => {
-        this.input.off('keypress', onKeypress);
-        this.input.off('data', onData);
-        this.output.off?.('resize', onResize);
-        this.input.setRawMode(false);
-        this.input.pause?.();
-        this.output.write('\x1b[?1000l\x1b[?1006l\x1b[?25h\x1b[?1049l');
-      };
+        await this.handleKey(key, str);
+        this.renderToTerminal();
+        if (this.quitRequested) {
+          finish();
+        }
+      } catch (error) {
+        this.setMessage(friendlyError(error));
+        if (!closing) this.renderToTerminal();
+      }
+    };
+    const signalHandlers = new Map(
+      ['SIGHUP', 'SIGINT', 'SIGTERM'].map((signal) => [
+        signal,
+        () => {
+          this.quitRequested = true;
+          this.signalSource.exitCode = signalExitCode(signal);
+          finish();
+        }
+      ])
+    );
+    const cleanup = () => {
+      this.input.off('keypress', onKeypress);
+      this.input.off('data', onData);
+      this.output.off?.('resize', onResize);
+      for (const [signal, handler] of signalHandlers) {
+        this.signalSource.off(signal, handler);
+      }
+    };
+
+    try {
+      for (const [signal, handler] of signalHandlers) {
+        this.signalSource.once(signal, handler);
+      }
+      lifecycle.enter();
+      this.renderToTerminal();
       this.input.on('keypress', onKeypress);
       this.input.on('data', onData);
       this.output.on?.('resize', onResize);
-    });
+      await completion;
+      if (fatalError) throw fatalError;
+    } finally {
+      cleanup();
+      lifecycle.restore();
+    }
   }
 
   async runUserScript(actions, { captureFrames = true } = {}) {

@@ -28,7 +28,8 @@ The black-box PTY journey covers:
 - SSH workspace browse, edit, save, workspace search, selected-result navigation, and remote command execution;
 - permission-denied save, preserved dirty state, permission recovery, retry, dirty-exit cancellation, and final save;
 - real PTY resize through narrow, minimum, and recovered layouts;
-- alternate-screen, mouse, cursor, raw-input lifecycle, process exit, and terminal restoration sequences.
+- alternate-screen, mouse, cursor, raw-input lifecycle, process exit, normal restoration, and SIGHUP/SIGINT/SIGTERM restoration sequences;
+- injected startup-output failure, idempotent lifecycle behavior, and conservative versus interactive capability profiles.
 
 ### Evidence honesty rules
 

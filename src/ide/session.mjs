@@ -32,6 +32,7 @@ export class IdeSession {
     this.expanded = new Set(['.']);
     this.selectedExplorerIndex = 0;
     this.lastSearch = [];
+    this.selectedSearchIndex = 0;
     this.lastTerminal = null;
     this.terminalInput = '';
     this.minibuffer = { kind: 'message', prompt: '', input: '', message: '' };
@@ -41,6 +42,7 @@ export class IdeSession {
     this.quitRequested = false;
     this.renderedFrames = [];
     this.suppressKeypressUntil = 0;
+    this.recentCommands = [];
   }
 
   async initialize({ seedDemo = false } = {}) {
@@ -102,6 +104,7 @@ export class IdeSession {
         this.input.off('data', onData);
         this.output.off?.('resize', onResize);
         this.input.setRawMode(false);
+        this.input.pause?.();
         this.output.write('\x1b[?1000l\x1b[?1006l\x1b[?25h\x1b[?1049l');
       };
       this.input.on('keypress', onKeypress);
@@ -269,7 +272,30 @@ export class IdeSession {
     } else if (this.focus === 'editor') {
       await this.handleEditorNormalKey(name);
     } else if (this.focus === 'panel') {
-      this.mode = 'terminal';
+      if (this.lastSearch.length > 0) {
+        await this.handleSearchResultsKey(name);
+      } else {
+        this.mode = 'terminal';
+      }
+    }
+  }
+
+  async handleSearchResultsKey(name) {
+    if (name === 'down' || name === 'j') {
+      this.selectedSearchIndex = Math.min(this.lastSearch.length - 1, this.selectedSearchIndex + 1);
+      return;
+    }
+    if (name === 'up' || name === 'k') {
+      this.selectedSearchIndex = Math.max(0, this.selectedSearchIndex - 1);
+      return;
+    }
+    if (name === 'enter') {
+      const result = this.lastSearch[this.selectedSearchIndex];
+      if (!result) return;
+      await this.open(result.relativePath, { focusEditor: true });
+      this.cursor.line = clamp(result.line - 1, 0, Math.max(0, this.bufferLines.length - 1));
+      this.cursor.column = clamp(result.column - 1, 0, this.currentLine().length);
+      this.setMessage(`Opened search result ${result.relativePath}:${result.line}:${result.column}`);
     }
   }
 
@@ -359,6 +385,7 @@ export class IdeSession {
     }
     if (this.mode === 'command' || this.mode === 'search') {
       this.minibuffer.input += text;
+      if (this.minibuffer.kind === 'command') this.updateCommandPalette();
       return;
     }
     if (this.mode !== 'insert') {
@@ -376,6 +403,16 @@ export class IdeSession {
     }
     if (name === 'backspace') {
       this.minibuffer.input = this.minibuffer.input.slice(0, -1);
+      if (this.minibuffer.kind === 'command') this.updateCommandPalette();
+      return;
+    }
+    if (this.minibuffer.kind === 'command' && (name === 'down' || name === 'up')) {
+      const delta = name === 'down' ? 1 : -1;
+      this.minibuffer.selectedIndex = clamp(
+        (this.minibuffer.selectedIndex ?? 0) + delta,
+        0,
+        Math.max(0, (this.minibuffer.items?.length ?? 1) - 1)
+      );
       return;
     }
     if (name === 'enter') {
@@ -393,7 +430,14 @@ export class IdeSession {
         await this.renameActive(this.minibuffer.input);
         this.mode = 'normal';
       } else {
-        await this.runPaletteCommand(this.minibuffer.input);
+        const selected = this.minibuffer.items?.[this.minibuffer.selectedIndex ?? 0];
+        if (selected && !selected.enabled) {
+          this.minibuffer.message = `Disabled: ${selected.reason}`;
+          return;
+        }
+        const command = selected?.command ?? this.minibuffer.input;
+        this.recordRecentCommand(command);
+        await this.runPaletteCommand(command);
         if (submittedKind === this.minibuffer.kind && this.minibuffer.kind === 'command') {
           this.mode = 'normal';
         }
@@ -468,7 +512,7 @@ export class IdeSession {
       return false;
     }
     const sequence = key?.sequence ?? str ?? '';
-    return sequence === '' || isControlSequence(sequence) || isMouseSequenceFragment(sequence) || sequence.length === 1;
+    return sequence === '' || isControlSequence(sequence) || isMouseSequenceFragment(sequence);
   }
 
   async activateExplorerSelection() {
@@ -581,6 +625,7 @@ export class IdeSession {
 
   async search(query) {
     this.lastSearch = await this.client.search(this.workspace, query);
+    this.selectedSearchIndex = 0;
     this.focus = 'panel';
     this.setMessage(this.lastSearch.length === 0 ? `No results for ${query}.` : `${this.lastSearch.length} result(s) for ${query}.`);
   }
@@ -588,14 +633,43 @@ export class IdeSession {
   async runTerminalLine(line) {
     const [command, ...args] = splitCommand(line);
     if (!command) return;
-    this.lastTerminal = await this.client.runTerminalCommand(command, args);
+    this.lastTerminal = await this.client.runTerminalCommand(command, args, { cwd: this.workspace });
     this.setMessage(`Command exited ${this.lastTerminal.status}.`);
   }
 
   openCommandPalette() {
     this.mode = 'command';
     this.focus = 'minibuffer';
-    this.minibuffer = { kind: 'command', prompt: 'Command palette:', input: '', message: 'Commands: save, search, quick open, terminal, help, quit, new file, rename, delete' };
+    this.minibuffer = {
+      kind: 'command',
+      prompt: 'Command palette:',
+      input: '',
+      message: 'Type to filter, ↑/↓ select, Enter run, Esc cancel.',
+      selectedIndex: 0,
+      items: []
+    };
+    this.updateCommandPalette();
+  }
+
+  updateCommandPalette() {
+    const query = this.minibuffer.input.trim().toLowerCase();
+    const recent = new Set(this.recentCommands);
+    this.minibuffer.items = commandPaletteItems(this)
+      .filter((item) => !query || `${item.label} ${item.command}`.toLowerCase().includes(query))
+      .sort((a, b) => Number(recent.has(b.command)) - Number(recent.has(a.command)))
+      .map((item) => ({ ...item, recent: recent.has(item.command) }));
+    this.minibuffer.selectedIndex = clamp(
+      this.minibuffer.selectedIndex ?? 0,
+      0,
+      Math.max(0, this.minibuffer.items.length - 1)
+    );
+    this.minibuffer.message = this.minibuffer.items.length === 0
+      ? 'No matching commands.'
+      : 'Type to filter, ↑/↓ select, Enter run, Esc cancel.';
+  }
+
+  recordRecentCommand(command) {
+    this.recentCommands = [command, ...this.recentCommands.filter((item) => item !== command)].slice(0, 5);
   }
 
   openQuickOpen() {
@@ -830,9 +904,11 @@ export class IdeSession {
       minibuffer: this.minibuffer,
       overlay: this.overlay,
       searchResults: this.lastSearch,
+      selectedSearchIndex: this.selectedSearchIndex,
       terminal: {
         input: this.terminalInput,
-        last: this.lastTerminal
+        last: this.lastTerminal,
+        cwd: this.workspace
       }
     };
   }
@@ -906,7 +982,7 @@ function labelForAction(action) {
 
 function helpLines(focus) {
   const global = [
-    'Global: Ctrl+Shift+P commands, Ctrl+P quick open, Ctrl+S save, Ctrl+` terminal, ? help, q quit.',
+    'Global: F1 or : commands, Ctrl+P quick open, Ctrl+S save, F2 terminal, ? help, q quit.',
     'Modes: NORMAL navigates, INSERT edits, SEARCH finds text, TERMINAL runs remote commands.'
   ];
   if (focus === 'explorer') return ['Explorer: ↑/↓ or j/k move, Enter opens/toggles, a new file, r rename, d delete, R refresh.', ...global];
@@ -972,4 +1048,25 @@ function friendlyError(error) {
   if (message.includes('EACCES')) return 'Permission denied. Check remote file permissions.';
   if (message.includes('Command failed: ssh')) return 'Remote command failed. Check SSH connection and remote command.';
   return `Error: ${message}`;
+}
+
+function commandPaletteItems(session) {
+  return [
+    { command: 'help', label: 'Help: Show Context Help', shortcut: '?' },
+    { command: 'save', label: 'File: Save', shortcut: 'Ctrl+S', enabled: Boolean(session.activeFile), reason: 'No active file.' },
+    { command: 'open', label: 'File: Quick Open', shortcut: 'Ctrl+P' },
+    { command: 'new file', label: 'File: New File', shortcut: 'Explorer a' },
+    { command: 'rename', label: 'File: Rename', shortcut: 'Explorer r', enabled: Boolean(session.activeFile), reason: 'No active file.' },
+    { command: 'delete', label: 'File: Delete', shortcut: 'Explorer d', enabled: Boolean(session.activeFile), reason: 'No active file.' },
+    { command: 'search', label: 'Search: Find in Workspace', shortcut: '/' },
+    { command: 'terminal', label: 'Terminal: Focus Terminal', shortcut: 'F2' },
+    {
+      command: 'debug',
+      label: 'Debug: Start',
+      shortcut: 'F5',
+      enabled: false,
+      reason: 'Requires post-MVP debugger extension support.'
+    },
+    { command: 'quit', label: 'Application: Quit', shortcut: 'q' }
+  ].map((item) => ({ enabled: true, reason: '', ...item }));
 }

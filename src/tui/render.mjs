@@ -47,6 +47,11 @@ export function renderWorkbench({ width, height, state = {} }) {
   drawStatus(cells, regions.status, state);
   hitRegions.push(region('status', regions.status, 10, ['click']));
 
+  if (state.minibuffer?.kind === 'command') {
+    const commandPalette = drawCommandPalette(cells, width, regions.status.y - 1, state.minibuffer);
+    hitRegions.push(region('overlay.commandPalette', commandPalette, 25, ['click', 'wheel', 'escape']));
+  }
+
   if (layout.mode === 'narrow') {
     const narrowHint = drawNarrowHint(cells, width, height);
     hitRegions.push(region('overlay.commandHint', narrowHint, 30, ['click', 'escape']));
@@ -142,32 +147,60 @@ function drawPanel(cells, area, state) {
   const terminal = state.terminal ?? {};
   const searchResults = state.searchResults ?? [];
   let lines = [];
-  if (state.focus === 'panel' && state.mode === 'TERMINAL' && (!terminal.last || terminal.input)) {
-    lines.push(`$ ${terminal.input ?? ''}`);
-  }
-  if (terminal.last) {
-    lines.push(`$ ${terminal.last.command}`);
+  const showingSearch = searchResults.length > 0 && state.focus === 'panel' && state.mode !== 'TERMINAL';
+  if (showingSearch) {
+    lines.push(`Search results (${searchResults.length})  ↑/↓ select  Enter open`);
+    lines.push(...searchResults.map((result, index) => `${index === (state.selectedSearchIndex ?? 0) ? '▸' : ' '} ${result.relativePath}:${result.line}:${result.column} ${result.preview}`));
+  } else if (state.focus === 'panel' && state.mode === 'TERMINAL' && (!terminal.last || terminal.input)) {
+    lines.push(`$ ${terminal.input ?? ''}  [cwd ${terminal.cwd ?? state.workspace ?? ''}]`);
+  } else if (terminal.last) {
+    lines.push(`$ ${terminal.last.command}  [cwd ${terminal.cwd ?? state.workspace ?? ''}]`);
     if (terminal.last.stdout) lines.push(...terminal.last.stdout.trimEnd().split(/\r?\n/u));
     if (terminal.last.stderr) lines.push(...terminal.last.stderr.trimEnd().split(/\r?\n/u));
     lines.push(`exit ${terminal.last.status}`);
   }
-  if (searchResults.length > 0) {
-    lines.push(`Search results (${searchResults.length})`);
-    lines.push(...searchResults.map((result) => `${result.relativePath}:${result.line}:${result.column} ${result.preview}`));
-  }
   if (lines.length === 0) {
-    lines = ['Terminal: Ctrl+` then type command', 'Search: / or Ctrl+Shift+F'];
+    lines = ['Terminal: F2 then type command', `cwd: ${terminal.cwd ?? state.workspace ?? ''}`, 'Search: /'];
   }
   lines.slice(0, Math.max(0, area.height - 2)).forEach((line, index) => {
     writeText(cells, area.x + 1, area.y + 1 + index, truncate(line, area.width - 2));
   });
 }
 
+function drawCommandPalette(cells, width, minibufferY, minibuffer) {
+  const itemCount = Math.min(4, Math.max(1, minibuffer.items?.length ?? 0));
+  const area = rect(2, Math.max(2, minibufferY - itemCount - 2), Math.min(78, width - 4), itemCount + 2);
+  drawBox(cells, area, 'Command palette', true);
+  const items = minibuffer.items ?? [];
+  if (items.length === 0) {
+    writeText(cells, area.x + 2, area.y + 1, truncate(minibuffer.message ?? 'No matching commands.', area.width - 4));
+    return area;
+  }
+  const selectedIndex = minibuffer.selectedIndex ?? 0;
+  const start = Math.max(0, Math.min(selectedIndex, items.length - itemCount));
+  items.slice(start, start + itemCount).forEach((item, index) => {
+    const selected = start + index === selectedIndex ? '▸' : ' ';
+    const status = item.enabled ? '' : ` — disabled: ${item.reason}`;
+    const recent = item.recent ? ' recent' : '';
+    writeText(
+      cells,
+      area.x + 1,
+      area.y + 1 + index,
+      truncate(`${selected} ${item.label}  ${item.shortcut}${recent}${status}`, area.width - 2)
+    );
+  });
+  return area;
+}
+
 function drawMinibuffer(cells, y, width, state) {
   if (y < 0) return;
   fillRegion(cells, rect(0, y, width, 1), ' ');
   const minibuffer = state.minibuffer ?? {};
-  const prompt = minibuffer.prompt ? `${minibuffer.prompt} ${minibuffer.input ?? ''}` : minibuffer.message ?? '';
+  const prompt = minibuffer.message?.startsWith('Disabled:')
+    ? minibuffer.message
+    : minibuffer.prompt
+      ? `${minibuffer.prompt} ${minibuffer.input ?? ''}`
+      : minibuffer.message ?? '';
   writeText(cells, 0, y, truncate(prompt, width));
 }
 

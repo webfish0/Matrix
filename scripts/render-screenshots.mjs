@@ -21,6 +21,7 @@ for (const capture of captures) {
 }
 
 await renderManualKeyFrames();
+await renderPtyKeyFrames();
 
 async function renderManualKeyFrames() {
   const framesDir = 'test-evidence/manual-product-mvp/frames';
@@ -40,6 +41,33 @@ async function renderManualKeyFrames() {
     ['search-results', (frame) => frame.text.includes('Search results')],
     ['terminal-command', (frame) => frame.text.includes('ide-ok') && frame.text.includes('exit 0')],
     ['minimum-size', (frame) => frame.text.includes('Smith needs more space')]
+  ];
+  for (const [name, predicate] of selections) {
+    const match = loaded.find(predicate);
+    if (match) {
+      await renderTextCapture(match.text, `${outputDir}/${name}`);
+    }
+  }
+}
+
+async function renderPtyKeyFrames() {
+  const framesDir = 'test-evidence/pty-product-mvp/frames';
+  const outputDir = 'test-evidence/pty-product-mvp/screenshots/frames';
+  await rm(outputDir, { recursive: true, force: true });
+  const frameFiles = (await readdir(framesDir)).filter((file) => file.endsWith('.txt')).sort();
+  const loaded = [];
+  for (const file of frameFiles) {
+    loaded.push({ file, text: await readFile(`${framesDir}/${file}`, 'utf8') });
+  }
+  const selections = [
+    ['initial', (frame) => frame.file.includes('initial-ready-workbench')],
+    ['command-palette', (frame) => frame.text.includes('Command palette:')],
+    ['remote-terminal', (frame) => frame.text.includes('pty-terminal') && frame.text.includes('exit 0')],
+    ['search-results', (frame) => frame.text.includes('Search results')],
+    ['save-failure', (frame) => frame.text.includes('Permission denied.') && frame.text.includes('Unsaved changes')],
+    ['dirty-exit', (frame) => frame.text.includes('Press s to save and quit')],
+    ['narrow-layout', (frame) => frame.text.includes('Narrow layout')],
+    ['minimum-layout', (frame) => frame.text.includes('Smith needs more space')]
   ];
   for (const [name, predicate] of selections) {
     const match = loaded.find(predicate);

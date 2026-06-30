@@ -15,6 +15,8 @@
     "test:mvp4": "node scripts/mvp4-test.mjs",
     "test:product-mvp": "node scripts/product-mvp-test.mjs",
     "test:manual-mvp": "node scripts/manual-mvp-test.mjs",
+    "test:pty-mvp": "node scripts/pty-product-mvp-test.mjs",
+    "test:product-mvp-gate": "node scripts/product-mvp-evidence-gate.mjs",
     "evidence:mvp0": "node scripts/mvp0-evidence.mjs",
     "verify:mvp0": "npm run build:mvp0 && npm run test:mvp0 && npm run evidence:mvp0",
     "verify:mvp1": "npm run build:mvp0 && npm run test:mvp1",
@@ -22,7 +24,7 @@
     "verify:mvp3": "npm run test:mvp3",
     "verify:mvp4": "npm run test:mvp4",
     "verify:mvp": "npm run verify:mvp0 && npm run verify:mvp1 && npm run verify:mvp2 && npm run verify:mvp3 && npm run verify:mvp4",
-    "verify:product-mvp": "npm run verify:mvp && npm run test:product-mvp && npm run test:manual-mvp && npm run screenshots:mvp"
+    "verify:product-mvp": "npm run verify:mvp && npm run test:product-mvp && npm run test:manual-mvp && npm run test:pty-mvp && npm run screenshots:mvp && npm run test:product-mvp-gate"
   },
   "engines": {
     "node": ">=20"

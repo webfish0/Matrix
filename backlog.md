@@ -1,7 +1,7 @@
 # Smith Implementation Backlog
 
-Status: Proposed, revised after UX reset
-Date: 26 June 2026
+Status: Active, revised after Product MVP PTY test gate
+Date: 30 June 2026
 
 This backlog is the source for GitHub issues and the **Smith** GitHub Project. All new items start in `Todo`. Each issue must link its pull request and test evidence before moving to `Done`.
 
@@ -9,7 +9,7 @@ UX behavior, UI/function mappings, and terminal wireframes are defined in [ux.md
 
 ## UX reset priority
 
-The current implementation has useful SSH, workspace, render, and evidence primitives, but the end-user Product MVP is not complete. The next implementation work must be grouped around usable workflows:
+The current implementation has SSH, workspace, render, deterministic user-journey, and black-box PTY evidence. Automated Product MVP verification passes, but live user acceptance and the remaining terminal/Code OSS hardening are not complete. Product work remains grouped around usable workflows:
 
 1. interactive terminal lifecycle and event loop;
 2. visible focus and Normal/Insert/Command/Search/Terminal modes;
@@ -21,6 +21,23 @@ The current implementation has useful SSH, workspace, render, and evidence primi
 8. resize-safe layouts;
 9. dirty-buffer exit/disconnect protection;
 10. end-user screenshots and tester evidence for each MVP story.
+
+### PMVP-TEST Black-box terminal acceptance and evidence traceability
+
+**Status:** Done in automated verification; live user acceptance remains separate.
+
+**Outcome:** Product MVP evidence distinguishes component simulation, SSH integration, deterministic user journeys, real PTY black-box behavior, and live acceptance.
+
+**Work:**
+
+- Launch the real Smith CLI under an operating-system PTY.
+- Send raw terminal bytes for advertised keys and SGR mouse input.
+- Resize the PTY and verify narrow, minimum, and recovered layouts.
+- Exercise search-result navigation, remote command cwd, save-failure recovery, and dirty-exit protection.
+- Capture raw/sanitized transcripts, screen frames, screenshots, JUnit, and story traceability.
+- Fail verification when a required check or artifact is missing.
+
+**Acceptance:** `USER-PTY-001` and the Product MVP evidence gate pass; the report continues to mark live user acceptance separately.
 
 ## Epic A — Code OSS baseline and product boundaries
 

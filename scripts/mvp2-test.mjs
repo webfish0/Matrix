@@ -23,6 +23,10 @@ class NullStream extends Writable {
 
 class FakeClient {
   async writeFile() {}
+
+  async readFile() {
+    return 'first line\nmatching hello line\n';
+  }
 }
 
 async function test(id, name, fn) {
@@ -99,6 +103,42 @@ await test('T-010-keypress', 'actual terminal keypress objects route to visible 
   assert(session.bufferLines[0] === 'abc', 'i keypress in Normal mode must not insert text');
   await session.handleKey({ name: 'x' }, 'x');
   assert(session.bufferLines[0] === 'xabc', 'printable key in Insert mode should insert text');
+});
+
+await test('T-010-palette', 'command palette filters, shows shortcuts and explains disabled commands', async () => {
+  const session = new IdeSession({ client: new FakeClient(), workspace: '/workspace', outputWriter: new NullStream() });
+  session.activeFile = 'src/app.ts';
+  session.bufferLines = ['abc'];
+  session.openCommandPalette();
+  assert(session.minibuffer.items.some((item) => item.shortcut === 'Ctrl+S'), 'palette should show command shortcuts');
+  await session.handleText('debug');
+  assert(session.minibuffer.items.length === 1, 'palette should filter commands by typed query');
+  assert(session.minibuffer.items[0].enabled === false, 'unsupported debugger command should be visibly disabled');
+  await session.handleNamedKey('enter');
+  assert(session.mode === 'command', 'disabled command should leave palette open');
+  assert(session.minibuffer.message.includes('Requires post-MVP'), 'disabled command should explain why it is unavailable');
+  const frame = session.renderFrame();
+  assert(frame.text.includes('Debug: Start'), 'filtered command should be rendered');
+  assert(frame.text.includes('Disabled: Requires post-MVP'), 'disabled reason should be rendered');
+});
+
+await test('T-010-search-navigation', 'keyboard selection opens a workspace search result at its line', async () => {
+  const session = new IdeSession({ client: new FakeClient(), workspace: '/workspace', outputWriter: new NullStream() });
+  session.lastSearch = [
+    { relativePath: 'src/app.ts', line: 2, column: 10, preview: 'matching hello line' }
+  ];
+  session.focus = 'panel';
+  await session.handleNamedKey('enter');
+  assert(session.activeFile === 'src/app.ts', 'Enter should open selected search result');
+  assert(session.focus === 'editor', 'opening a search result should focus the editor');
+  assert(session.cursor.line === 1 && session.cursor.column === 9, 'result should open at its one-based line and column');
+});
+
+await test('T-011-mouse-followup', 'a normal key immediately after mouse input is not suppressed', async () => {
+  const session = new IdeSession({ client: new FakeClient(), workspace: '/workspace', outputWriter: new NullStream() });
+  session.suppressKeypressUntil = Date.now() + 100;
+  assert(session.shouldSuppressKeypress('q', { name: 'q', sequence: 'q' }) === false, 'q after a click must not be dropped');
+  assert(session.shouldSuppressKeypress('', { sequence: '\u001b[<0;8;6M' }) === true, 'mouse control sequence should remain suppressed');
 });
 
 await test('T-011', 'mouse hit routing selects topmost region', async () => {

@@ -142,7 +142,7 @@ Connects to real remote systems. Needs clear host/workspace identity, safe save 
 
 **Primary flow:**
 
-1. User presses `Ctrl+Shift+F`.
+1. User presses `/`; `Ctrl+Shift+F` is an optional alias where the terminal can report it distinctly.
 2. Smith opens search interface.
 3. User types query.
 4. Results stream in grouped by file.
@@ -164,7 +164,7 @@ Connects to real remote systems. Needs clear host/workspace identity, safe save 
 
 **Primary flow:**
 
-1. User presses <kbd>Ctrl</kbd>+<kbd>`</kbd>.
+1. User presses `F2`; <kbd>Ctrl</kbd>+<kbd>`</kbd> is an optional alias.
 2. Smith opens integrated terminal panel.
 3. Status line shows `TERMINAL`.
 4. User runs `pwd` or project command.

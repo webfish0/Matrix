@@ -1,14 +1,14 @@
 # Smith Product MVP Status
 
-Status: Usable terminal IDE vertical slice implemented; pending live user acceptance
-Date: 26 June 2026
+Status: Automated Product MVP gate implemented and passing; pending live user acceptance
+Date: 30 June 2026
 Verified commit: the repository commit containing this status update
 
 ## Product MVP boundary
 
 Product MVP means a basic VS Code-like IDE accessible over a terminal through SSH. Language extensions/LSP are explicitly deferred until after MVP.
 
-The previous implementation and evidence proved SSH-backed primitives and a command-driven smoke path. The current implementation replaces that prompt with a screen-oriented terminal workbench and scripted end-user workflow evidence. Live user acceptance is still required before closing the Product MVP gate.
+The current implementation provides a screen-oriented terminal workbench, SSH integration evidence, a deterministic user journey, and a black-box operating-system PTY journey. Live user acceptance is still required before closing the Product MVP gate.
 
 The usable MVP boundary is defined by:
 
@@ -72,6 +72,11 @@ The existing verification confirms:
 | Render terminal workbench | Workbench frame with Explorer/editor/panel/status/minibuffer/status line is captured under `test-evidence/product-mvp/frames/`. |
 | Screen-oriented manual flow | `npm run smith -- ide-demo` opens a full-screen terminal workbench. |
 | End-user workflow evidence | `USER-MVP-001` drives the terminal from a user perspective: each step observes visible screen feedback, performs the visible action, and checks the next user-visible result for help, command palette, mouse click, Explorer, Insert mode, save, create, rename, delete-cancel, delete-confirm, search, terminal, resize, dirty-exit cancellation, and quit. |
+| Real terminal decoding | `USER-PTY-001` launches the real CLI under an OS PTY and sends raw F-key, control-key, printable, Escape, Enter, mouse, and resize input. |
+| Save-failure recovery | The PTY journey makes the remote file read-only, proves permission-denied feedback and preserved dirty state, repairs permission, and retries save. |
+| Search navigation | Search results are keyboard selectable and Enter opens the selected remote file at its matching line and column. |
+| Terminal lifecycle | The PTY journey verifies alternate-screen/mouse/cursor entry, normal process exit, and all matching restoration sequences. |
+| Requirement traceability | The evidence gate checks every prioritized MVP story for lower-level and black-box evidence and verifies required artifacts exist. |
 
 Existing evidence:
 
@@ -85,6 +90,12 @@ test-evidence/manual-product-mvp/user-journey.json
 test-evidence/manual-product-mvp/screenshots/manual-session.png
 test-evidence/manual-product-mvp/screenshots/frames/
 test-evidence/product-mvp/screenshots/workbench-100x30.png
+test-evidence/pty-product-mvp/transcript.ansi
+test-evidence/pty-product-mvp/transcript.txt
+test-evidence/pty-product-mvp/user-journey.json
+test-evidence/pty-product-mvp/screenshots/frames/
+test-evidence/product-mvp-gate/report.json
+test-evidence/product-mvp-gate/report.md
 ```
 
 ## Confirmed foundation scope
@@ -122,7 +133,6 @@ These gaps should be closed or explicitly accepted before closing the Product MV
 - broader terminal compatibility testing for mouse/key sequences;
 - fuller quick-open result picker instead of simple substring open;
 - true persistent PTY/multiplexing for long-running terminal commands;
-- save-failure and permission-denied evidence against an injected failure;
 - final issue/project status reconciliation.
 
 These remain post-MVP unless explicitly pulled forward:

@@ -93,10 +93,11 @@ export class SshWorkspaceClient {
     return JSON.parse(output);
   }
 
-  async runTerminalCommand(command, args = []) {
+  async runTerminalCommand(command, args = [], { cwd } = {}) {
     const output = await this.run(this.nodePath, [
       '-e',
-      'const {spawnSync}=require("child_process"); const r=spawnSync(process.argv[1], process.argv.slice(2), {encoding:"utf8"}); process.stdout.write(JSON.stringify({status:r.status, stdout:r.stdout, stderr:r.stderr}));',
+      'const {spawnSync}=require("child_process"); const r=spawnSync(process.argv[2], process.argv.slice(3), {cwd:process.argv[1]||undefined,encoding:"utf8"}); process.stdout.write(JSON.stringify({status:r.status, stdout:r.stdout, stderr:r.stderr}));',
+      cwd ?? '',
       command,
       ...args
     ]);

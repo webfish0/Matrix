@@ -1,11 +1,43 @@
 # Smith Test Strategy and Plan
 
-Status: Proposed
-Date: 23 June 2026
+Status: Product MVP gate implemented; full release matrix planned
+Date: 30 June 2026
 
 ## 1. Objective
 
 Testing must prove that Smith is a safe terminal client for a matching Code OSS remote agent, not merely that individual widgets render. The release suite covers upstream compatibility, SSH bootstrap, remote protocols, editor correctness, terminal behavior, extension compatibility, responsive/mouse interaction, recovery, security, performance, licensing, and packaging.
+
+## Product MVP test gate
+
+`npm run verify:product-mvp` is the executable Product MVP gate. It must pass all of these independent evidence layers:
+
+| Layer | Purpose | Current executable evidence |
+| --- | --- | --- |
+| Component | Pinpoint layout, input-routing, palette, search-navigation, editor, and mouse regressions quickly. | `T-008` through `T-011-*` |
+| SSH integration | Prove file and process effects occur through disposable OpenSSH, not an in-memory fake. | `T-002`, `T-003`, `T-004`, `PMVP-001`, `PMVP-002` |
+| Simulated user journey | Exercise broad UX states with deterministic screen assertions and remote readback. | `USER-MVP-001` |
+| Black-box PTY journey | Launch the real CLI, send raw terminal bytes, resize the OS PTY, and observe only screen output and process state. | `USER-PTY-001` |
+| Live user acceptance | Validate the user’s actual terminal emulator, SSH configuration, keyboard, mouse, and workflow. | Deliberately manual and currently pending |
+
+The gate writes `test-evidence/product-mvp-gate/report.json` and `report.md`. Every prioritized MVP story must have passing lower-level evidence and a passing black-box PTY path. Required transcripts, frames, screenshots, and JUnit files are checked for existence.
+
+The black-box PTY journey covers:
+
+- F1, F2, `:`, Ctrl+P, Ctrl+S, Escape, Enter, printable input, and SGR mouse bytes through Node’s real terminal decoder;
+- command filtering, shortcuts, execution, and disabled-command explanations;
+- SSH workspace browse, edit, save, workspace search, selected-result navigation, and remote command execution;
+- permission-denied save, preserved dirty state, permission recovery, retry, dirty-exit cancellation, and final save;
+- real PTY resize through narrow, minimum, and recovered layouts;
+- alternate-screen, mouse, cursor, raw-input lifecycle, process exit, and terminal restoration sequences.
+
+### Evidence honesty rules
+
+- A direct method call is component evidence, not terminal evidence.
+- A constructed key object is input-routing evidence, not proof of real terminal decoding.
+- A disposable OpenSSH fixture is integration evidence, not proof against the user’s production host.
+- A PTY transcript is automated black-box evidence, not live acceptance on Kitty, iTerm2, Windows Terminal, tmux, or another real emulator.
+- A story is not reported covered when a required artifact or evidence layer is missing.
+- Test failures retain partial PTY transcripts and user steps for diagnosis.
 
 ## 2. Test layers
 

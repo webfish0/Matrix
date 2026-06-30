@@ -107,7 +107,7 @@ function drawExplorer(cells, area, state) {
   rows.slice(0, Math.max(0, area.height - 3)).forEach((row, index) => {
     const marker = row.selected ? '▸' : ' ';
     const type = row.kind === 'directory' ? (row.expanded ? '▾' : '▸') : ' ';
-    const dirty = row.active && state.dirty ? ' ●' : row.active ? ' •' : '';
+    const dirty = row.dirty ? ' ●' : row.active ? ' •' : '';
     const indent = ' '.repeat(Math.min(8, row.depth * 2));
     writeText(cells, area.x + 1, area.y + 2 + index, truncate(`${marker}${indent}${type} ${row.name}${dirty}`, area.width - 2));
   });

@@ -27,6 +27,7 @@ The black-box PTY journey covers:
 - command filtering, shortcuts, execution, and disabled-command explanations;
 - recursive Quick Open filtering, visible selection, keyboard navigation, opening, cancellation, and no-match handling;
 - SSH workspace browse, edit, save, workspace search, selected-result navigation, and remote command execution;
+- dirty-buffer preservation across file switches, inactive dirty markers, multi-file quit protection, save-all, and remote readback;
 - persistent remote shell cwd across commands, serialized command requests, non-zero status, bounded output, PTY resize, and process closure;
 - permission-denied save, preserved dirty state, permission recovery, retry, dirty-exit cancellation, and final save;
 - real PTY resize through narrow, minimum, and recovered layouts;

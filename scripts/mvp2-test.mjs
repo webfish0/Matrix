@@ -29,7 +29,13 @@ class NullStream extends Writable {
 }
 
 class FakeClient {
-  async writeFile() {}
+  constructor() {
+    this.writes = new Map();
+  }
+
+  async writeFile(path, content) {
+    this.writes.set(path, content);
+  }
 
   async readFile() {
     return 'first line\nmatching hello line\n';
@@ -244,10 +250,40 @@ await test('T-010-search-navigation', 'keyboard selection opens a workspace sear
   assert(session.cursor.line === 1 && session.cursor.column === 9, 'result should open at its one-based line and column');
 });
 
+await test('T-007-multibuffer', 'switching files preserves every dirty buffer and save-all writes them', async () => {
+  const client = new FakeClient();
+  const session = new IdeSession({ client, workspace: '/workspace', outputWriter: new NullStream() });
+  session.activeFile = 'src/app.ts';
+  session.bufferLines = ['app'];
+  session.cursor = { line: 0, column: 3 };
+  session.insertText('-dirty');
+
+  await session.open('README.md');
+  session.cursor = { line: 0, column: 0 };
+  session.insertText('readme-dirty ');
+  await session.open('src/app.ts');
+  assert(session.bufferLines[0] === 'app-dirty', 'reopening a dirty file must restore its unsaved text');
+  assert(session.dirty, 'restored unsaved buffer must remain dirty');
+
+  await session.requestQuit();
+  assert(session.overlay.lines.some((line) => line.includes('src/app.ts')), 'quit protection should list first dirty file');
+  assert(session.overlay.lines.some((line) => line.includes('README.md')), 'quit protection should list inactive dirty file');
+  await session.handleNamedKey('escape');
+
+  await session.saveAll();
+  assert(client.writes.get('/workspace/src/app.ts').includes('app-dirty'), 'save-all should write preserved active buffer');
+  assert(client.writes.get('/workspace/README.md').includes('readme-dirty'), 'save-all should write preserved inactive buffer');
+  assert(session.dirtyPaths().length === 0, 'save-all should clear every dirty state');
+});
+
 await test('T-011-mouse-followup', 'a normal key immediately after mouse input is not suppressed', async () => {
   const session = new IdeSession({ client: new FakeClient(), workspace: '/workspace', outputWriter: new NullStream() });
-  session.suppressKeypressUntil = Date.now() + 100;
+  assert(session.shouldSuppressKeypress('', { sequence: '\u001b[<' }) === true, 'SGR mouse prefix should start suppression');
+  assert(session.shouldSuppressKeypress('0', { sequence: '0' }) === true, 'mouse coordinate digit should be suppressed');
+  assert(session.shouldSuppressKeypress(';', { sequence: ';' }) === true, 'mouse separator should be suppressed');
+  assert(session.shouldSuppressKeypress('M', { sequence: 'M' }) === true, 'mouse terminator should be suppressed');
   assert(session.shouldSuppressKeypress('q', { name: 'q', sequence: 'q' }) === false, 'q after a click must not be dropped');
+  assert(session.shouldSuppressKeypress('', { name: 'f2', sequence: '\u001bOQ' }) === false, 'F2 after a click must not be dropped');
   assert(session.shouldSuppressKeypress('', { sequence: '\u001b[<0;8;6M' }) === true, 'mouse control sequence should remain suppressed');
 });
 

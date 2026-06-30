@@ -385,18 +385,60 @@ def run() -> dict[str, object]:
             expected="pty-e2e",
         )
         journey.act(
-            goal="save the remote file",
+            goal="leave Insert mode with an unsaved buffer",
+            observes="Unsaved changes",
+            action="press Escape",
+            payload=b"\x1b",
+            expected="NORMAL mode.",
+        )
+        journey.act(
+            goal="switch away from the dirty source file",
+            observes="Quick open: Ctrl+P",
+            action="press Ctrl+P",
+            payload=b"\x10",
+            expected="Open file:",
+        )
+        journey.act(
+            goal="select README while app.ts is dirty",
+            observes="Quick Open",
+            action="type README",
+            payload=b"README",
+            expected="README.md",
+        )
+        journey.act(
+            goal="open README without discarding app.ts",
+            observes="README.md selected",
+            action="press Enter",
+            payload=b"\r",
+            expected="Editor: README.md",
+        )
+        journey.act(
+            goal="reopen the dirty source file",
+            observes="Quick open: Ctrl+P",
+            action="press Ctrl+P",
+            payload=b"\x10",
+            expected="Open file:",
+        )
+        journey.act(
+            goal="filter back to app.ts",
+            observes="Quick Open",
+            action="type app.ts",
+            payload=b"app.ts",
+            expected="src/app.ts",
+        )
+        journey.act(
+            goal="prove the unsaved edit survived file switching",
+            observes="src/app.ts selected",
+            action="press Enter",
+            payload=b"\r",
+            expected=["Editor: src/app.ts", "pty-e2e", "Unsaved changes"],
+        )
+        journey.act(
+            goal="save the preserved remote file",
             observes="Ctrl+S save",
             action="press Ctrl+S byte 0x13",
             payload=b"\x13",
             expected="Saved src/app.ts",
-        )
-        journey.act(
-            goal="return to Normal mode",
-            observes="Saved src/app.ts",
-            action="press Escape",
-            payload=b"\x1b",
-            expected="NORMAL mode.",
         )
         journey.act(
             goal="open workspace search",

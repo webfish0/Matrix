@@ -75,6 +75,7 @@ The existing verification confirms:
 | Browse remote workspace | Remote workspace directory is listed over SSH. |
 | Open remote file | Remote `src/app.ts` is read over SSH. |
 | Edit and save remote file | Remote `src/app.ts` is modified and read back over SSH. |
+| Preserve dirty files | Per-file in-memory buffers retain unsaved text and cursor state across Explorer/Quick Open switches; inactive dirty files remain marked and save-all/quit protection covers every dirty path. |
 | Search remote workspace | Remote text search finds the edited content. |
 | Run remote terminal command | Remote `/bin/echo terminal-ok` executes over SSH. |
 | Persistent remote terminal | A forced OpenSSH PTY starts in the workspace, preserves `cd` state across commands, reports non-zero status, applies resize, bounds output, and closes with Smith. |

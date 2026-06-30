@@ -235,6 +235,8 @@ The current implementation has SSH, workspace, render, deterministic user-journe
 
 **Acceptance:** T-006 and T-007 pass, including randomized Unicode edits.
 
+**Current evidence:** Per-file in-memory buffers preserve text, cursor and dirty state across Explorer/Quick Open switches. Inactive dirty files remain marked; quit lists every dirty path; save-all writes each preserved buffer. Undo/redo integration, multi-cursor, folds, wrapping and richer save-conflict UX remain open.
+
 ### SMITH-015 Implement language-feature and editor-overlay presentation
 
 **Outcome:** Language extensions can provide normal coding assistance in the terminal.

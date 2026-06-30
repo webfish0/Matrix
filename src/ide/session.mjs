@@ -28,6 +28,7 @@ export class IdeSession {
     this.mode = 'normal';
     this.focus = 'explorer';
     this.activeFile = null;
+    this.buffers = new Map();
     this.bufferLines = [];
     this.cursor = { line: 0, column: 0 };
     this.dirty = false;
@@ -46,7 +47,7 @@ export class IdeSession {
     this.pendingDelete = null;
     this.quitRequested = false;
     this.renderedFrames = [];
-    this.suppressKeypressUntil = 0;
+    this.mouseKeypressActive = false;
     this.recentCommands = [];
   }
 
@@ -570,17 +571,23 @@ export class IdeSession {
     if (!mouse) {
       return false;
     }
-    this.suppressKeypressUntil = Date.now() + 100;
     await this.handleMouse(mouse);
     return true;
   }
 
   shouldSuppressKeypress(str, key) {
-    if (Date.now() > this.suppressKeypressUntil) {
-      return false;
-    }
     const sequence = key?.sequence ?? str ?? '';
-    return sequence === '' || isControlSequence(sequence) || isMouseSequenceFragment(sequence);
+    if (this.mouseKeypressActive) {
+      if (sequence === 'M' || sequence === 'm') {
+        this.mouseKeypressActive = false;
+      }
+      return true;
+    }
+    if (sequence.startsWith('\x1b[<')) {
+      this.mouseKeypressActive = true;
+      return true;
+    }
+    return Boolean(parseSgrMouse(sequence));
   }
 
   async activateExplorerSelection() {
@@ -599,11 +606,20 @@ export class IdeSession {
   }
 
   async open(relativePath, { focusEditor = true } = {}) {
+    this.syncActiveBuffer();
     this.activeFile = relativePath;
-    const text = await this.client.readFile(workspaceFile(this.workspace, relativePath));
-    this.bufferLines = splitLines(text);
-    this.cursor = { line: 0, column: 0 };
-    this.dirty = false;
+    const existing = this.buffers.get(relativePath);
+    if (existing) {
+      this.bufferLines = [...existing.lines];
+      this.cursor = { ...existing.cursor };
+      this.dirty = existing.dirty;
+    } else {
+      const text = await this.client.readFile(workspaceFile(this.workspace, relativePath));
+      this.bufferLines = splitLines(text);
+      this.cursor = { line: 0, column: 0 };
+      this.dirty = false;
+      this.syncActiveBuffer();
+    }
     if (focusEditor) this.focus = 'editor';
     this.setMessage(`Opened ${relativePath}`);
   }
@@ -621,11 +637,15 @@ export class IdeSession {
     const currentPath = this.activeFile ?? this.selectedExplorerRow()?.relativePath;
     if (!currentPath) throw new Error('No file selected to rename.');
     const safePath = normalizeUserPath(newRelativePath);
+    this.syncActiveBuffer();
     await this.client.renamePath(workspaceFile(this.workspace, currentPath), workspaceFile(this.workspace, safePath));
+    const state = this.buffers.get(currentPath);
+    this.buffers.delete(currentPath);
+    if (state) this.buffers.set(safePath, state);
     await this.expandParent(safePath);
     await this.refreshExplorer();
     if (this.activeFile === currentPath) {
-      this.activeFile = safePath;
+      this.activeFile = null;
       await this.open(safePath, { focusEditor: true });
     }
     this.setMessage(`Renamed ${currentPath} to ${safePath}`);
@@ -643,6 +663,7 @@ export class IdeSession {
     this.bufferLines[this.cursor.line] = `${line.slice(0, this.cursor.column)}${text}${line.slice(this.cursor.column)}`;
     this.cursor.column += text.length;
     this.dirty = true;
+    this.syncActiveBuffer();
   }
 
   insertNewline() {
@@ -653,6 +674,7 @@ export class IdeSession {
     this.cursor.line += 1;
     this.cursor.column = 0;
     this.dirty = true;
+    this.syncActiveBuffer();
   }
 
   backspace() {
@@ -661,6 +683,7 @@ export class IdeSession {
       this.bufferLines[this.cursor.line] = `${line.slice(0, this.cursor.column - 1)}${line.slice(this.cursor.column)}`;
       this.cursor.column -= 1;
       this.dirty = true;
+      this.syncActiveBuffer();
       return;
     }
     if (this.cursor.line > 0) {
@@ -670,19 +693,39 @@ export class IdeSession {
       this.bufferLines.splice(this.cursor.line - 1, 2, previous + current);
       this.cursor.line -= 1;
       this.dirty = true;
+      this.syncActiveBuffer();
     }
   }
 
   moveCursor(lineDelta, columnDelta) {
     this.cursor.line = clamp(this.cursor.line + lineDelta, 0, Math.max(0, this.bufferLines.length - 1));
     this.cursor.column = clamp(this.cursor.column + columnDelta, 0, this.currentLine().length);
+    this.syncActiveBuffer();
   }
 
   async save() {
     if (!this.activeFile) throw new Error('No active file.');
     await this.client.writeFile(workspaceFile(this.workspace, this.activeFile), `${this.bufferLines.join('\n')}${this.bufferLines.length ? '\n' : ''}`);
     this.dirty = false;
+    this.syncActiveBuffer();
     this.setMessage(`Saved ${this.activeFile}`);
+  }
+
+  async saveAll() {
+    this.syncActiveBuffer();
+    const dirty = this.dirtyPaths();
+    for (const relativePath of dirty) {
+      const state = this.buffers.get(relativePath);
+      await this.client.writeFile(
+        workspaceFile(this.workspace, relativePath),
+        `${state.lines.join('\n')}${state.lines.length ? '\n' : ''}`
+      );
+      state.dirty = false;
+    }
+    if (this.activeFile && this.buffers.has(this.activeFile)) {
+      this.dirty = this.buffers.get(this.activeFile).dirty;
+    }
+    this.setMessage(`Saved ${dirty.length} file(s).`);
   }
 
   async search(query) {
@@ -821,13 +864,15 @@ export class IdeSession {
   }
 
   async requestQuit() {
-    if (this.dirty && !this.pendingQuit) {
+    const dirtyPaths = this.dirtyPaths();
+    if (dirtyPaths.length > 0 && !this.pendingQuit) {
       this.pendingQuit = true;
       this.overlay = {
         kind: 'confirm',
         title: 'Unsaved changes',
         lines: [
-          `${this.activeFile} has unsaved changes.`,
+          `${dirtyPaths.length} file(s) have unsaved changes:`,
+          ...dirtyPaths.slice(0, 5).map((path) => `• ${path}`),
           'Press s to save and quit, d to discard, Esc to cancel.'
         ]
       };
@@ -888,6 +933,7 @@ export class IdeSession {
         this.cursor = { line: 0, column: 0 };
         this.dirty = false;
       }
+      this.buffers.delete(deleted);
       this.pendingDelete = null;
       this.overlay = null;
       await this.refreshExplorer();
@@ -906,7 +952,7 @@ export class IdeSession {
       return true;
     }
     if (name === 's') {
-      await this.save();
+      await this.saveAll();
       this.quitRequested = true;
       return true;
     }
@@ -975,6 +1021,22 @@ export class IdeSession {
     return this.bufferLines[this.cursor.line] ?? '';
   }
 
+  syncActiveBuffer() {
+    if (!this.activeFile) return;
+    this.buffers.set(this.activeFile, {
+      lines: [...this.bufferLines],
+      cursor: { ...this.cursor },
+      dirty: this.dirty
+    });
+  }
+
+  dirtyPaths() {
+    this.syncActiveBuffer();
+    return [...this.buffers.entries()]
+      .filter(([, state]) => state.dirty)
+      .map(([path]) => path);
+  }
+
   setMessage(message) {
     this.minibuffer = { kind: 'message', prompt: '', input: '', message };
   }
@@ -995,7 +1057,7 @@ export class IdeSession {
       mode: this.mode.toUpperCase(),
       focus: this.focus,
       activeFile: this.activeFile ?? 'No file',
-      unsaved: this.dirty ? 1 : 0,
+      unsaved: this.dirtyPaths().length,
       dirty: this.dirty,
       branch: 'main',
       cursorLine: this.cursor.line + 1,
@@ -1003,7 +1065,8 @@ export class IdeSession {
       explorerRows: this.explorerRows.map((row, index) => ({
         ...row,
         selected: index === this.selectedExplorerIndex,
-        active: row.relativePath === this.activeFile
+        active: row.relativePath === this.activeFile,
+        dirty: row.relativePath === this.activeFile ? this.dirty : Boolean(this.buffers.get(row.relativePath)?.dirty)
       })),
       editorLines: this.bufferLines.map((line, index) => ({
         number: index + 1,
@@ -1149,10 +1212,6 @@ function isSafeTextInput(text) {
 
 function isControlSequence(text) {
   return /[\u0000-\u001F\u007F\u009B]/u.test(text);
-}
-
-function isMouseSequenceFragment(text) {
-  return /^[<;0-9mM]+$/u.test(text);
 }
 
 function friendlyError(error) {

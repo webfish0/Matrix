@@ -142,7 +142,6 @@ These gaps should be closed or explicitly accepted before closing the Product MV
 
 - live user acceptance on a real terminal, not only scripted evidence;
 - broader terminal compatibility testing for mouse/key sequences;
-- fuller quick-open result picker instead of simple substring open;
 - PTY reconnection/multiplexing, direct arbitrary child-TUI keystreams, selection, and copy/paste;
 - final issue/project status reconciliation.
 

@@ -226,7 +226,7 @@ export class IdeSession {
       return;
     }
     if (name === 'ctrl+p' && this.mode === 'normal') {
-      this.openQuickOpen();
+      await this.openQuickOpen();
       return;
     }
     if (name === 'ctrl+s') {
@@ -303,7 +303,7 @@ export class IdeSession {
       return;
     }
     if (name === 'ctrl+p') {
-      this.openQuickOpen();
+      await this.openQuickOpen();
       return;
     }
     if (name === 'ctrl+f' || name === '/') {
@@ -447,6 +447,7 @@ export class IdeSession {
     if (this.mode === 'command' || this.mode === 'search') {
       this.minibuffer.input += text;
       if (this.minibuffer.kind === 'command') this.updateCommandPalette();
+      if (this.minibuffer.kind === 'quickOpen') this.updateQuickOpen();
       return;
     }
     if (this.mode !== 'insert') {
@@ -465,9 +466,10 @@ export class IdeSession {
     if (name === 'backspace') {
       this.minibuffer.input = this.minibuffer.input.slice(0, -1);
       if (this.minibuffer.kind === 'command') this.updateCommandPalette();
+      if (this.minibuffer.kind === 'quickOpen') this.updateQuickOpen();
       return;
     }
-    if (this.minibuffer.kind === 'command' && (name === 'down' || name === 'up')) {
+    if ((this.minibuffer.kind === 'command' || this.minibuffer.kind === 'quickOpen') && (name === 'down' || name === 'up')) {
       const delta = name === 'down' ? 1 : -1;
       this.minibuffer.selectedIndex = clamp(
         (this.minibuffer.selectedIndex ?? 0) + delta,
@@ -482,8 +484,13 @@ export class IdeSession {
         await this.search(this.minibuffer.input);
         this.mode = 'normal';
       } else if (this.minibuffer.kind === 'quickOpen') {
-        await this.quickOpen(this.minibuffer.input);
-        this.mode = 'normal';
+        const selected = this.minibuffer.items?.[this.minibuffer.selectedIndex ?? 0];
+        if (!selected) {
+          this.minibuffer.message = `No file found for ${this.minibuffer.input || '<empty>'}.`;
+        } else {
+          await this.quickOpen(selected.path);
+          this.mode = 'normal';
+        }
       } else if (this.minibuffer.kind === 'createFile') {
         await this.createFile(this.minibuffer.input);
         this.mode = 'normal';
@@ -624,16 +631,10 @@ export class IdeSession {
     this.setMessage(`Renamed ${currentPath} to ${safePath}`);
   }
 
-  async quickOpen(query) {
-    const files = await this.collectFiles('.');
-    const match = files.find((file) => file.includes(query));
-    if (!match) {
-      this.setMessage(`No file found for ${query}.`);
-      return;
-    }
-    await this.expandParent(match);
+  async quickOpen(relativePath) {
+    await this.expandParent(relativePath);
     await this.refreshExplorer();
-    await this.open(match, { focusEditor: true });
+    await this.open(relativePath, { focusEditor: true });
   }
 
   insertText(text) {
@@ -761,10 +762,30 @@ export class IdeSession {
     this.recentCommands = [command, ...this.recentCommands.filter((item) => item !== command)].slice(0, 5);
   }
 
-  openQuickOpen() {
+  async openQuickOpen() {
     this.mode = 'command';
     this.focus = 'minibuffer';
-    this.minibuffer = { kind: 'quickOpen', prompt: 'Open file:', input: '', message: 'Type part of a file path.' };
+    const files = await this.collectFiles('.');
+    this.minibuffer = {
+      kind: 'quickOpen',
+      prompt: 'Open file:',
+      input: '',
+      message: files.length ? 'Type to filter, ↑/↓ select, Enter open, Esc cancel.' : 'Workspace contains no files.',
+      selectedIndex: 0,
+      allItems: files.map((path) => ({ path, label: path, shortcut: '', enabled: true })),
+      items: []
+    };
+    this.updateQuickOpen();
+  }
+
+  updateQuickOpen() {
+    const query = this.minibuffer.input.toLowerCase();
+    this.minibuffer.items = (this.minibuffer.allItems ?? [])
+      .filter((item) => !query || item.path.toLowerCase().includes(query));
+    this.minibuffer.selectedIndex = 0;
+    this.minibuffer.message = this.minibuffer.items.length
+      ? 'Type to filter, ↑/↓ select, Enter open, Esc cancel.'
+      : `No file found for ${this.minibuffer.input || '<empty>'}.`;
   }
 
   openSearch() {
@@ -786,7 +807,7 @@ export class IdeSession {
     } else if (command.includes('search')) {
       this.openSearch();
     } else if (command.includes('open')) {
-      this.openQuickOpen();
+      await this.openQuickOpen();
     } else if (command.includes('terminal')) {
       this.mode = 'terminal';
       this.focus = 'panel';
@@ -1031,7 +1052,7 @@ export class IdeSession {
       const [command, ...args] = splitCommand(line);
       if (command === 'ls') translated.push('tab');
       if (command === 'open') {
-        this.openQuickOpen();
+        await this.openQuickOpen();
         await this.handleText(args[0] ?? '');
         await this.handleMinibufferKey('enter');
       }

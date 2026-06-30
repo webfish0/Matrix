@@ -34,6 +34,19 @@ class FakeClient {
   async readFile() {
     return 'first line\nmatching hello line\n';
   }
+
+  async list(path) {
+    if (path.endsWith('/src')) {
+      return [
+        { name: 'app.ts', kind: 'file' },
+        { name: 'app.test.ts', kind: 'file' }
+      ];
+    }
+    return [
+      { name: 'src', kind: 'directory' },
+      { name: 'README.md', kind: 'file' }
+    ];
+  }
 }
 
 async function test(id, name, fn) {
@@ -194,6 +207,29 @@ await test('T-010-palette', 'command palette filters, shows shortcuts and explai
   const frame = session.renderFrame();
   assert(frame.text.includes('Debug: Start'), 'filtered command should be rendered');
   assert(frame.text.includes('Disabled: Requires post-MVP'), 'disabled reason should be rendered');
+});
+
+await test('T-010-quick-open', 'Quick Open filters visible remote files and opens the selected result', async () => {
+  const session = new IdeSession({ client: new FakeClient(), workspace: '/workspace', outputWriter: new NullStream() });
+  session.activeFile = 'src/app.ts';
+  session.bufferLines = ['abc'];
+  await session.openQuickOpen();
+  assert(session.minibuffer.items.length === 3, 'Quick Open should recursively list remote workspace files');
+  await session.handleText('app');
+  assert(session.minibuffer.items.length === 2, 'Quick Open should filter paths as the user types');
+  await session.handleNamedKey('down');
+  const selectedPath = session.minibuffer.items[1].path;
+  const frame = session.renderFrame();
+  assert(frame.text.includes('Quick Open') && frame.text.includes(selectedPath), 'Quick Open should render the selected path before opening');
+  await session.handleNamedKey('enter');
+  assert(session.activeFile === selectedPath && session.focus === 'editor', 'Enter should open the selected Quick Open result');
+
+  await session.openQuickOpen();
+  await session.handleText('missing');
+  assert(session.minibuffer.items.length === 0, 'no-match state should contain no selectable results');
+  assert(session.renderFrame().text.includes('No file found for missing.'), 'no-match state should be explicit');
+  await session.handleNamedKey('escape');
+  assert(session.activeFile === selectedPath, 'cancelling Quick Open must preserve active editor');
 });
 
 await test('T-010-search-navigation', 'keyboard selection opens a workspace search result at its line', async () => {

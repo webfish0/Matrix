@@ -62,6 +62,7 @@ async function renderPtyKeyFrames() {
   const selections = [
     ['initial', (frame) => frame.file.includes('initial-ready-workbench')],
     ['command-palette', (frame) => frame.text.includes('Command palette:')],
+    ['quick-open', (frame) => frame.text.includes('Quick Open') && frame.text.includes('README.md')],
     ['remote-terminal', (frame) => frame.text.includes('pty-terminal') && frame.text.includes('exit 0')],
     ['search-results', (frame) => frame.text.includes('Search results')],
     ['save-failure', (frame) => frame.text.includes('Permission denied.') && frame.text.includes('Unsaved changes')],

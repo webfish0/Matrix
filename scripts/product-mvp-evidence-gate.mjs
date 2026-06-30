@@ -12,6 +12,7 @@ const checks = [
   check('T-009', 'component-render', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-010-keypress', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-010-palette', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
+  check('T-010-quick-open', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-010-search-navigation', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-011', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
   check('T-011-mouse-followup', 'component-input', 'test-evidence/mvp-2-terminal-workbench/results.json'),
@@ -29,7 +30,7 @@ const checks = [
 
 const stories = [
   story('US-MVP-001', 'Launch and orient', ['PMVP-001', 'USER-PTY-001']),
-  story('US-MVP-002', 'Browse remote files', ['T-011', 'USER-MVP-001', 'USER-PTY-001']),
+  story('US-MVP-002', 'Browse remote files', ['T-010-quick-open', 'T-011', 'USER-MVP-001', 'USER-PTY-001']),
   story('US-MVP-003', 'Edit, save and recover from save failure', ['T-007', 'PMVP-001', 'USER-PTY-001']),
   story('US-MVP-004', 'Search and navigate to a result', ['T-010-search-navigation', 'PMVP-001', 'USER-PTY-001']),
   story('US-MVP-005', 'Run a persistent remote command session in workspace context', ['PMVP-003', 'USER-PTY-001']),
@@ -54,6 +55,7 @@ const requiredArtifacts = [
   'test-evidence/pty-product-mvp/signal-sigterm-transcript.ansi',
   'test-evidence/pty-product-mvp/screenshots/frames/initial.png',
   'test-evidence/pty-product-mvp/screenshots/frames/command-palette.png',
+  'test-evidence/pty-product-mvp/screenshots/frames/quick-open.png',
   'test-evidence/pty-product-mvp/screenshots/frames/remote-terminal.png',
   'test-evidence/pty-product-mvp/screenshots/frames/search-results.png',
   'test-evidence/pty-product-mvp/screenshots/frames/save-failure.png',

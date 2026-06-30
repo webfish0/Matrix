@@ -47,9 +47,9 @@ export function renderWorkbench({ width, height, state = {} }) {
   drawStatus(cells, regions.status, state);
   hitRegions.push(region('status', regions.status, 10, ['click']));
 
-  if (state.minibuffer?.kind === 'command') {
-    const commandPalette = drawCommandPalette(cells, width, regions.status.y - 1, state.minibuffer);
-    hitRegions.push(region('overlay.commandPalette', commandPalette, 25, ['click', 'wheel', 'escape']));
+  if (state.minibuffer?.kind === 'command' || state.minibuffer?.kind === 'quickOpen') {
+    const quickPicker = drawQuickPicker(cells, width, regions.status.y - 1, state.minibuffer);
+    hitRegions.push(region(`overlay.${state.minibuffer.kind}`, quickPicker, 25, ['click', 'wheel', 'escape']));
   }
 
   if (layout.mode === 'narrow') {
@@ -169,10 +169,10 @@ function drawPanel(cells, area, state) {
   });
 }
 
-function drawCommandPalette(cells, width, minibufferY, minibuffer) {
+function drawQuickPicker(cells, width, minibufferY, minibuffer) {
   const itemCount = Math.min(4, Math.max(1, minibuffer.items?.length ?? 0));
   const area = rect(2, Math.max(2, minibufferY - itemCount - 2), Math.min(78, width - 4), itemCount + 2);
-  drawBox(cells, area, 'Command palette', true);
+  drawBox(cells, area, minibuffer.kind === 'quickOpen' ? 'Quick Open' : 'Command palette', true);
   const items = minibuffer.items ?? [];
   if (items.length === 0) {
     writeText(cells, area.x + 2, area.y + 1, truncate(minibuffer.message ?? 'No matching commands.', area.width - 4));

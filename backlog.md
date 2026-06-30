@@ -274,6 +274,8 @@ The current implementation has SSH, workspace, render, deterministic user-journe
 
 **Acceptance:** Keyboard/mouse/accessibility journeys pass across all responsive modes.
 
+**Current evidence:** Command palette and Quick Open provide visible filtering, selection, keyboard navigation, shortcuts, disabled reasons, recent-command ordering, explicit no-match state, Enter execution/opening, and safe cancellation. Multi-select, validation, general menus/context menus, progress, notifications, trust/authentication prompts, and mouse selection remain open.
+
 ### SMITH-018 Implement Explorer, Search, Problems and Output
 
 **Outcome:** Core workspace navigation and diagnostics are complete.

@@ -266,11 +266,39 @@ def run() -> dict[str, object]:
             expected="Open file:",
         )
         journey.act(
-            goal="cancel Quick Open",
+            goal="filter Quick Open to a visible remote file",
             observes="Open file:",
-            action="press Escape",
-            payload=b"\x1b",
-            expected="Cancelled.",
+            action="type README",
+            payload=b"README",
+            expected="README.md",
+        )
+        journey.act(
+            goal="open the selected Quick Open result",
+            observes="README.md is visibly selected",
+            action="press Enter",
+            payload=b"\r",
+            expected="Editor: README.md",
+        )
+        journey.act(
+            goal="return to the source file through Quick Open",
+            observes="Quick open: Ctrl+P",
+            action="press Ctrl+P",
+            payload=b"\x10",
+            expected="Open file:",
+        )
+        journey.act(
+            goal="filter Quick Open to app.ts",
+            observes="Quick Open result list",
+            action="type app.ts",
+            payload=b"app.ts",
+            expected="src/app.ts",
+        )
+        journey.act(
+            goal="open app.ts from the selected result",
+            observes="src/app.ts is visibly selected",
+            action="press Enter",
+            payload=b"\r",
+            expected="Editor: src/app.ts",
         )
         journey.act(
             goal="open the integrated terminal using the advertised function key",
